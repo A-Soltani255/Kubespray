@@ -12,7 +12,7 @@ The environment used throughout:
 - Build/automation: kubespray (192.168.154.137) — also serves offline files over HTTP (:8080)
 - Artifact hub: nexus (192.168.154.133) — YUM (hosted) for RPMs and Docker (hosted) registry on :5000 for images
 
-Design choices (and why):
+> Design choices (and why):
 - Air-gapped: reduces supply-chain risk, satisfies compliance, and guarantees repeatable builds by eliminating “latest from the Internet”.
 - Kubespray: declarative, idempotent, and inventory-driven automation built on Ansible; easier to audit than ad-hoc kubeadm scripts.
 - containerd (+ nerdctl/ctr): the CNCF-blessed container runtime with clear, file-driven mirror and auth configuration.
