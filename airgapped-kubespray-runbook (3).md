@@ -44,9 +44,34 @@ This runbook is written from a successful build, including every workaround we a
 4. **SELinux** enforcing is fine; Kubespray adjusts policies. If custom hardening is present, ensure containerd can run.
 5. **Firewall:** allow intra-cluster traffic or temporarily disable during bootstrap. Typical required ports: 6443, 2379–2380 (etcd), 10250–10259, 8472 (VXLAN when using Calico), 30000–32767 (NodePort), etc.
 6. **Kernel modules / sysctls** (Kubespray configures, but sanity check):  
-   - `br_netfilter`, `overlay`  
-   - `net.bridge.bridge-nf-call-iptables=1`  
-   - `net.ipv4.ip_forward=1`
+   ```bash
+   cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+   br_netfilter
+   overlay
+   nf_conntrack
+   ip_tables
+   ip6_tables
+   bridge
+   nf_nat
+   ip_vti
+   x_tables
+   EOF
+   ```
+
+   ```bash
+   for module in br_netfilter overlay nf_conntrack ip_tables ip6_tables bridge nf_nat ip_vti x_tables; do modprobe $module; done
+   ```
+
+   ```bash
+   cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+   net.ipv6.conf.all.forwarding = 1
+   net.ipv4.ip_forward = 1
+   net.bridge.bridge-nf-call-ip6tables = 1
+   net.bridge.bridge-nf-call-iptables = 1
+   EOF
+
+   sysctl --system
+   ```
 7. **/etc/hosts** (optional, but helpful): map hostnames ↔ IPs.
 8. **Passwordless SSH** from the Kubespray node to all cluster nodes (root or a sudoer).
 
