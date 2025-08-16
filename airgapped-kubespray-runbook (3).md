@@ -20,11 +20,7 @@ Design choices (and why):
 - Core components only: apiserver, controller-manager, scheduler, etcd, kube-proxy, CoreDNS, Calico node/controllers. We explicitly disable nginx-proxy, dns-autoscaler, metrics-server, Helm, etc., for a minimal, production-friendly baseline.
 
 
-**Goal:** Deploy a **Kubernetes 1.33.3** cluster on Rocky Linux 9 in a fully **offline** (air‑gapped) environment using **Kubespray** and **Nexus** as:
-- a **YUM (hosted)** repo for OS/RPM packages, and
-- a **Docker (hosted)** registry at `192.168.154.133:5000` mirroring upstream registries.
 
-This runbook is written from a successful build, including every workaround we applied (HTTP vs HTTPS, offline binaries, containerd mirrors, Calico CRDs, kubeadm, etc.). It’s designed to be reproducible and auditable.
 
 ---
 
