@@ -41,8 +41,21 @@ This runbook is written from a successful build, including every workaround we a
    sudo swapoff -a
    sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
    ```
-4. **SELinux** enforcing is fine; Kubespray adjusts policies. If custom hardening is present, ensure containerd can run.
+4. **SELinux** Permissive mode is fine, but I suggest disabling it on the first try to implement this scenario. Kubespray will adjust the policies. If custom hardening is present, ensure that containerd can run.
+
+   ```bash
+   setenforce 0
+   sed -i 's/^SELINUX=enforcing$/SELINUX=disabled/' /etc/selinux/config
+   
+   reboot
+   ```
+
 5. **Firewall:** allow intra-cluster traffic or temporarily disable during bootstrap. Typical required ports: 6443, 2379–2380 (etcd), 10250–10259, 8472 (VXLAN when using Calico), 30000–32767 (NodePort), etc.
+
+   ```bash
+   systemctl disable firewalld && systemctl stop firewalld
+   ```
+
 6. **Kernel modules / sysctls** (Kubespray configures, but sanity check):  
    ```bash
    cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
@@ -73,8 +86,27 @@ This runbook is written from a successful build, including every workaround we a
    sysctl --system
    ```
 7. **/etc/hosts** (optional, but helpful): map hostnames ↔ IPs.
-8. **Passwordless SSH** from the Kubespray node to all cluster nodes (root or a sudoer).
 
+   ```bash
+   cat <<EOF | sudo tee /etc/hosts
+   127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+   ::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+   192.168.154.134 master1
+   192.168.154.135 worker1
+   192.168.154.136 worker2
+   192.168.154.133 nexus
+   192.168.154.137 kubespray
+   EOF
+   ```
+9. **Passwordless SSH** from the Kubespray node to all cluster nodes (root or a sudoer).
+
+```bash
+# On 192.168.154.137 (kubespray VM)
+ssh-keygen -t ed25519 -N '' -f ~/.ssh/id_ed25519
+for h in master1 worker1 worker2; do ssh-copy-id root@$h; done
+# quick check:
+ansible all -i "master1,worker1,worker2," -m ping -u root
+```
 ---
 
 ## 2) Online Preparation (do these on an **internet‑connected** Rocky 9 VM)
