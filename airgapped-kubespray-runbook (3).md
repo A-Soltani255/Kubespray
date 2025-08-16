@@ -61,7 +61,37 @@ Kubespray is a mature, upstream-maintained collection of Ansible playbooks and r
 #### 7. Community & Transparency
 - It’s open, well-reviewed, and maps closely to upstream Kubernetes primitives, so you’re not locked into a proprietary lifecycle tool.
 
-~~*Compared to raw kubeadm:*~~ Kubespray wraps the best practices of kubeadm into reusable, testable roles, plus it covers the system-level details (packages, sysctls, SELinux, service units, container runtime config, image pre-pulls) that are easy to miss in handcrafted scripts—especially offline.
+***Compared to raw kubeadm:*** Kubespray wraps the best practices of kubeadm into reusable, testable roles, plus it covers the system-level details (packages, sysctls, SELinux, service units, container runtime config, image pre-pulls) that are easy to miss in handcrafted scripts—especially offline.
+
+### What this document gives you
+- A complete blueprint for your exact topology and IPs, including the Nexus layout you use `/kubespray/{docker.io,ghcr.io,quay.io,registry.k8s.io}`.
+- A locked set of versions (Kubernetes, containerd/runc, CNI, etcd, Helm, Calico) and the offline directory structure Kubespray expects.
+- Explicit containerd configuration to use HTTP mirrors and, if needed, Basic Auth, with examples of the rendered `hosts.toml` files.
+- Minimal add-ons (CoreDNS + Calico) and instructions to disable nginx-proxy and DNS autoscaler for a lean control plane.
+- Troubleshooting drawn from real errors (HTTPS vs HTTP pulls, duplicate “v” in versions, archive vs file copy, kubeadm template validation, Calico CRDs), with concrete fixes you can apply immediately.
+- Verification and Day-2 guidance (node lifecycle, etcd backups, image checks, DNS sanity tests).
+
+
+### Scope, assumptions, and success criteria
+
+#### In scope
+- Single-control-plane cluster (master1) with etcd collocated.
+- Two worker nodes.
+- Air-gapped build using Nexus (YUM + Docker hosted).
+- `containerd` runtime with pull-through mirrors configured for HTTP on `192.168.154.133:5000`.
+- Calico networking (KDD), CoreDNS, kube-proxy; no nginx-proxy, no dns-autoscaler, no metrics-server, no Helm.
+
+#### Assumptions
+- All nodes run Rocky 9; SELinux disabled (Kubespray manages policies).
+- Time is synchronized; swap is disabled/masked.
+- Passwordless SSH from the Kubespray VM to all cluster nodes.
+- Adequate firewall allowances inside the cluster; external ingress/egress is not covered here.
+
+#### Success looks like
+- `kubectl get nodes` shows master1/worker1/worker2 Ready.
+- Only core Pods are running in `kube-system` (apiserver, scheduler, controller-manager, etcd, kube-proxy, CoreDNS, Calico).
+- `nerdctl -n k8s.io pull 192.168.154.133:5000/kubespray/registry.k8s.io/kube-apiserver:v1.33.3` succeeds from any node (HTTP mirror working).
+- No contacts to the public Internet; all pulls resolve via Nexus.
 
 
 ---
