@@ -21,7 +21,7 @@ The environment used throughout:
 
 ### What you will do (nature of the work)
 
-#### 1.Prepare artifacts online (once, on an Internet-connected Rocky 9 box):
+##### 1.Prepare artifacts online (once, on an Internet-connected Rocky 9 box):
 - Mirror OS RPMs (BaseOS/AppStream/EPEL/Docker CE) with reposync and archive them.
 - Clone Kubespray, pre-download pip wheels for offline installs, and generate lists of required Kubernetes binaries and container images using contrib/offline.
 - Pull and save all container images and gather all binaries (kubeadm/kubelet/kubectl, containerd/runc/nerdctl, crictl, CNI, etcd, Helm, Calico).
