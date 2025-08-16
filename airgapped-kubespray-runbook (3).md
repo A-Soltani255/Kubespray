@@ -93,6 +93,36 @@ Kubespray is a mature, upstream-maintained collection of Ansible playbooks and r
 - `nerdctl -n k8s.io pull 192.168.154.133:5000/kubespray/registry.k8s.io/kube-apiserver:v1.33.3` succeeds from any node (HTTP mirror working).
 - No contacts to the public Internet; all pulls resolve via Nexus.
 
+### Risks, trade-offs, and how this guide mitigates them
+
+- ***HTTP registries*** are insecure on untrusted networks.
+Mitigation: use them only on an isolated, trusted LAN. Optionally enable Basic Auth in Nexus and configure `containerd` auths.
+
+- ***Version drift*** causes broken pulls or mismatched binaries/images.
+Mitigation: this runbook pins versions everywhere and embeds the exact `files.list`/`images.list`. Don’t mix versions unless you regenerate artifacts.
+
+- ***Checksum integrity*** can be lost when moving archives.
+Mitigation: keep checksums in `offline.yml` for critical binaries (e.g., `runc`, `crictl`); verify after transfer.
+
+- ***Firewall/Sysctl*** surprises can block overlays or kubelet health.
+Mitigation: Kubespray enforces the needed modules and sysctls; the runbook lists the critical ones up front.
+
+### How to read and use this runbook
+- ***1. Read Section 1–2*** to understand the online preparation and why each step exists.
+- ***2. Use Section 3–4*** when you stage the offline files and run Kubespray; copy the provided `group_vars`.
+- ***3. Keep Section 5–7*** handy during the first converge; it contains the registry mirror/auth details and the exact fixes for common pitfalls.
+- ***4. Run the checks in Section 8*** to validate the cluster before handing it to application teams.
+- ***5. Refer to Appendices*** for verbatim configs (`offline.yml`, `k8s-cluster.yml`, `containerd.yml`), lists, and helper scripts—so the document is self-contained.
+
+### Quick glossary
+- ***Air-gapped:*** No Internet; all artifacts are mirrored inside the LAN.
+- ***Nexus (hosted):*** Private repositories you populate yourself (RPMs and Docker).
+- ***Kubespray:*** Ansible roles/playbooks for upstream Kubernetes deployments.
+- ***containerd:*** Container runtime; pulls images using hosts.toml mirror rules.
+- ***CRDs:*** CustomResourceDefinitions; Calico’s KDD manifests are applied as part of networking setup.
+- ***Idempotent:*** Safe to re-apply; converges without unintended side effects.
+
+With this foundation, you can move straight into the procedural sections and build the cluster confidently, knowing what is happening, why it’s needed in an air-gapped context, and how to verify each step.
 
 ---
 
