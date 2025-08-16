@@ -32,11 +32,11 @@ The environment used throughout:
 #### 3. Stage files on the Kubespray VM and serve over HTTP:
 - Place the offline binaries under /srv/offline-files/ following the exact paths Kubespray expects.
 - Serve them with a tiny HTTP server (python3 -m http.server 8080).
-#### 4.Automate the cluster build with Kubespray:
+#### 4. Automate the cluster build with Kubespray:
 - Prepare an inventory for master1, worker1, worker2.
 - Provide group_vars for offline, k8s-cluster, and containerd (mirrors, insecure HTTP, optional auth).
 - Run cluster.yml once to converge the cluster.
-#### 5.Verify and lock in:
+#### 5. Verify and lock in:
 - Confirm nodes/Pods, image pull behavior (HTTP mirrors), and add-on minimalism.
 - Capture the final configs and artifacts for audit and future rebuilds.
 
@@ -46,22 +46,22 @@ This is infrastructure as code. Every input (versions, URLs, checksums, mirrors)
 ### Why Kubespray?
 Kubespray is a mature, upstream-maintained collection of Ansible playbooks and roles for building vanilla Kubernetes. Its advantages are especially compelling for air-gapped builds:
 
-#### 1.Idempotent & Declarative
+#### 1. Idempotent & Declarative
 - Rerun-safe: you can apply the playbooks multiple times; they converge to the desired state. This is crucial for recoverability in air-gapped sites.
-#### 2.Inventory-Driven
+#### 2. Inventory-Driven
 - All topology and host-specific details live in a single inventory. Scaling up or down is a change to data, not to code.
-#### 3.Modular, Opinionated-but-Flexible
+#### 3. Modular, Opinionated-but-Flexible
 - Choose container runtime (containerd), CNI (Calico/Cilium/…), add-ons, OS families, etc. Toggle features with variables rather than hand-editing system files.
-#### 4.Offline-Friendly
+#### 4. Offline-Friendly
 - The contrib/offline toolkit produces authoritative lists of binaries and images for a given version set. That feeds directly into your mirroring pipeline.
-#### 5.Security & Compliance
+#### 5. Security & Compliance
 - You control the full supply chain: exact versions, checksums, filesystem presence, and which endpoints are contacted (or not). SELinux/sysctls/firewall are managed consistently.
-#### 6.Day-2 Operations
+#### 6. Day-2 Operations
 - Built-in playbooks for scale up/down, upgrades, and reset, minimizing custom scripting. You can roll nodes and upgrade in a controlled, repeatable way.
-#### 7.Community & Transparency
+#### 7. Community & Transparency
 - It’s open, well-reviewed, and maps closely to upstream Kubernetes primitives, so you’re not locked into a proprietary lifecycle tool.
 
-
+Compared to raw kubeadm: Kubespray wraps the best practices of kubeadm into reusable, testable roles, plus it covers the system-level details (packages, sysctls, SELinux, service units, container runtime config, image pre-pulls) that are easy to miss in handcrafted scripts—especially offline.
 
 
 ---
