@@ -3,7 +3,7 @@
 _Last updated: 2025-08-16 14:07:51 UTC_
 
 
-### Introduction:
+## Introduction:
 This runbook documents—end-to-end—how to build and operate a Kubernetes 1.33.3 cluster on Rocky Linux 9 in a fully air-gapped (offline) environment using Kubespray and Sonatype Nexus. It is written from a real, working deployment and includes all practical details you need to reproduce the outcome: mirroring RPMs and container images, staging Kubernetes binaries, teaching containerd to use your HTTP registry mirrors, pinning versions, disabling non-essential add-ons, and validating the final cluster.
 
 The environment used throughout:
@@ -19,12 +19,32 @@ The environment used throughout:
 >- Calico (KDD mode): mature, simple underlay/overlay networking; no external datastore; offline artifacts are small and easy to mirror.
 >- Core components only: apiserver, controller-manager, scheduler, etcd, kube-proxy, CoreDNS, Calico node/controllers. We explicitly disable nginx-proxy, dns-autoscaler, metrics-server, Helm, etc., for a minimal, production-friendly baseline.
 
-#### What you will do (nature of the work)
+### What you will do (nature of the work)
 
-##### 1.Prepare artifacts online (once, on an Internet-connected Rocky 9 box):
+#### 1.Prepare artifacts online (once, on an Internet-connected Rocky 9 box):
+- Mirror OS RPMs (BaseOS/AppStream/EPEL/Docker CE) with reposync and archive them.
+- Clone Kubespray, pre-download pip wheels for offline installs, and generate lists of required Kubernetes binaries and container images using contrib/offline.
+- Pull and save all container images and gather all binaries (kubeadm/kubelet/kubectl, containerd/runc/nerdctl, crictl, CNI, etcd, Helm, Calico).
 
+#### 2.Seed Nexus in the offline LAN:
+- Load the archived RPMs into a YUM (hosted) repo (preserving repodata/).
+- Stand up a Docker (hosted) registry on 192.168.154.133:5000, load all images, retag them under the required mirror namespaces, and push.
+- Ensure every offline node has a local.repo pointing to Nexus and can dnf update without Internet.
 
+#### 3.Stage files on the Kubespray VM and serve over HTTP:
+- Place the offline binaries under /srv/offline-files/ following the exact paths Kubespray expects.
+- Serve them with a tiny HTTP server (python3 -m http.server 8080).
 
+#### 4.Automate the cluster build with Kubespray:
+- Prepare an inventory for master1, worker1, worker2.
+- Provide group_vars for offline, k8s-cluster, and containerd (mirrors, insecure HTTP, optional auth).
+- Run cluster.yml once to converge the cluster.
+
+#### 5.Verify and lock in:
+- Confirm nodes/Pods, image pull behavior (HTTP mirrors), and add-on minimalism.
+- Capture the final configs and artifacts for audit and future rebuilds.
+
+This is infrastructure as code. Every input (versions, URLs, checksums, mirrors) is in version-controlled YAML, and the output is deterministic when rerun against the same artifacts.
 ---
 
 ## 0) Topology / Addresses / Versions
