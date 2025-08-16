@@ -61,7 +61,7 @@ Kubespray is a mature, upstream-maintained collection of Ansible playbooks and r
 #### 7. Community & Transparency
 - It’s open, well-reviewed, and maps closely to upstream Kubernetes primitives, so you’re not locked into a proprietary lifecycle tool.
 
-++Compared to raw kubeadm++: Kubespray wraps the best practices of kubeadm into reusable, testable roles, plus it covers the system-level details (packages, sysctls, SELinux, service units, container runtime config, image pre-pulls) that are easy to miss in handcrafted scripts—especially offline.
+<u>Compared to raw kubeadm:</u> Kubespray wraps the best practices of kubeadm into reusable, testable roles, plus it covers the system-level details (packages, sysctls, SELinux, service units, container runtime config, image pre-pulls) that are easy to miss in handcrafted scripts—especially offline.
 
 
 ---
