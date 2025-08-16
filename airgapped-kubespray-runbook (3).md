@@ -19,6 +19,9 @@ The environment used throughout:
 >- Calico (KDD mode): mature, simple underlay/overlay networking; no external datastore; offline artifacts are small and easy to mirror.
 >- Core components only: apiserver, controller-manager, scheduler, etcd, kube-proxy, CoreDNS, Calico node/controllers. We explicitly disable nginx-proxy, dns-autoscaler, metrics-server, Helm, etc., for a minimal, production-friendly baseline.
 
+#### What you will do (nature of the work)
+
+##### 1.Prepare artifacts online (once, on an Internet-connected Rocky 9 box):
 
 
 
