@@ -38,9 +38,8 @@ This runbook is written from a successful build, including every workaround we a
 2. **Time sync:** enable `chronyd` or `systemd-timesyncd`.
 3. **Swap off** and masked (Kubespray also handles it, but verify):  
    ```bash
-   swapoff -a
-   sed -ri 's/^[^#].*swap/#&/' /etc/fstab
-   systemctl mask swap.target
+   sudo swapoff -a
+   sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
    ```
 4. **SELinux** enforcing is fine; Kubespray adjusts policies. If custom hardening is present, ensure containerd can run.
 5. **Firewall:** allow intra-cluster traffic or temporarily disable during bootstrap. Typical required ports: 6443, 2379–2380 (etcd), 10250–10259, 8472 (VXLAN when using Calico), 30000–32767 (NodePort), etc.
