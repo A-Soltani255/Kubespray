@@ -3,7 +3,7 @@
 _Last updated: 2025-08-16 14:07:51 UTC_
 
 
-#### Introduction:
+### Introduction:
 This runbook documents—end-to-end—how to build and operate a Kubernetes 1.33.3 cluster on Rocky Linux 9 in a fully air-gapped (offline) environment using Kubespray and Sonatype Nexus. It is written from a real, working deployment and includes all practical details you need to reproduce the outcome: mirroring RPMs and container images, staging Kubernetes binaries, teaching containerd to use your HTTP registry mirrors, pinning versions, disabling non-essential add-ons, and validating the final cluster.
 
 The environment used throughout:
@@ -11,6 +11,14 @@ The environment used throughout:
 - Workers: worker1 (192.168.154.135), worker2 (192.168.154.136)
 - Build/automation: kubespray (192.168.154.137) — also serves offline files over HTTP (:8080)
 - Artifact hub: nexus (192.168.154.133) — YUM (hosted) for RPMs and Docker (hosted) registry on :5000 for images
+
+Design choices (and why):
+- Air-gapped: reduces supply-chain risk, satisfies compliance, and guarantees repeatable builds by eliminating “latest from the Internet”.
+- Kubespray: declarative, idempotent, and inventory-driven automation built on Ansible; easier to audit than ad-hoc kubeadm scripts.
+- containerd (+ nerdctl/ctr): the CNCF-blessed container runtime with clear, file-driven mirror and auth configuration.
+- Calico (KDD mode): mature, simple underlay/overlay networking; no external datastore; offline artifacts are small and easy to mirror.
+
+Core components only: apiserver, controller-manager, scheduler, etcd, kube-proxy, CoreDNS, Calico node/controllers. We explicitly disable nginx-proxy, dns-autoscaler, metrics-server, Helm, etc., for a minimal, production-friendly baseline.
 
 
 **Goal:** Deploy a **Kubernetes 1.33.3** cluster on Rocky Linux 9 in a fully **offline** (air‑gapped) environment using **Kubespray** and **Nexus** as:
