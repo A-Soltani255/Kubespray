@@ -21,15 +21,15 @@ The environment used throughout:
 
 ### What you will do (nature of the work)
 
-#### 1.Prepare artifacts online (once, on an Internet-connected Rocky 9 box):
+#### 1. Prepare artifacts online (once, on an Internet-connected Rocky 9 box):
 - Mirror OS RPMs (BaseOS/AppStream/EPEL/Docker CE) with reposync and archive them.
 - Clone Kubespray, pre-download pip wheels for offline installs, and generate lists of required Kubernetes binaries and container images using contrib/offline.
 - Pull and save all container images and gather all binaries (kubeadm/kubelet/kubectl, containerd/runc/nerdctl, crictl, CNI, etcd, Helm, Calico).
-#### 2.Seed Nexus in the offline LAN:
+#### 2. Seed Nexus in the offline LAN:
 - Load the archived RPMs into a YUM (hosted) repo (preserving repodata/).
 - Stand up a Docker (hosted) registry on 192.168.154.133:5000, load all images, retag them under the required mirror namespaces, and push.
 - Ensure every offline node has a local.repo pointing to Nexus and can dnf update without Internet.
-#### 3.Stage files on the Kubespray VM and serve over HTTP:
+#### 3. Stage files on the Kubespray VM and serve over HTTP:
 - Place the offline binaries under /srv/offline-files/ following the exact paths Kubespray expects.
 - Serve them with a tiny HTTP server (python3 -m http.server 8080).
 #### 4.Automate the cluster build with Kubespray:
