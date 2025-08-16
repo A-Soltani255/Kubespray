@@ -1,10 +1,10 @@
 
-# Air‑Gapped Kubernetes with Kubespray — Complete Runbook
+# Air‑Gapped Kubernetes with Kubespray — Complete Instruction
 _Last updated: 2025-08-16 14:07:51 UTC_
 
 
 ## Introduction:
-This runbook documents—end-to-end—how to build and operate a Kubernetes 1.33.3 cluster on Rocky Linux 9 in a fully air-gapped (offline) environment using Kubespray and Sonatype Nexus. It is written from a real, working deployment and includes all practical details you need to reproduce the outcome: mirroring RPMs and container images, staging Kubernetes binaries, teaching containerd to use your HTTP registry mirrors, pinning versions, disabling non-essential add-ons, and validating the final cluster.
+This document documents—end-to-end—how to build and operate a Kubernetes 1.33.3 cluster on Rocky Linux 9 in a fully air-gapped (offline) environment using Kubespray and Sonatype Nexus. It is written from a real, working deployment and includes all practical details you need to reproduce the outcome: mirroring RPMs and container images, staging Kubernetes binaries, teaching containerd to use your HTTP registry mirrors, pinning versions, disabling non-essential add-ons, and validating the final cluster.
 
 The environment used throughout:
 - Control plane: master1 (192.168.154.134) — single-node control plane with collocated etcd
@@ -99,15 +99,15 @@ Kubespray is a mature, upstream-maintained collection of Ansible playbooks and r
 Mitigation: use them only on an isolated, trusted LAN. Optionally enable Basic Auth in Nexus and configure `containerd` auths.
 
 - ***Version drift*** causes broken pulls or mismatched binaries/images.
-Mitigation: this runbook pins versions everywhere and embeds the exact `files.list`/`images.list`. Don’t mix versions unless you regenerate artifacts.
+Mitigation: this document pins versions everywhere and embeds the exact `files.list`/`images.list`. Don’t mix versions unless you regenerate artifacts.
 
 - ***Checksum integrity*** can be lost when moving archives.
 Mitigation: keep checksums in `offline.yml` for critical binaries (e.g., `runc`, `crictl`); verify after transfer.
 
 - ***Firewall/Sysctl*** surprises can block overlays or kubelet health.
-Mitigation: Kubespray enforces the needed modules and sysctls; the runbook lists the critical ones up front.
+Mitigation: Kubespray enforces the needed modules and sysctls; the document lists the critical ones up front.
 
-### How to read and use this runbook
+### How to read and use this document
 - ***1. Read Section 1–2*** to understand the online preparation and why each step exists.
 - ***2. Use Section 3–4*** when you stage the offline files and run Kubespray; copy the provided `group_vars`.
 - ***3. Keep Section 5–7*** handy during the first converge; it contains the registry mirror/auth details and the exact fixes for common pitfalls.
@@ -1774,4 +1774,4 @@ If your Nexus requires auth and you configured `containerd_registry_auth(s)`, co
 
 ---
 
-_End of runbook_
+# _The End_
