@@ -142,10 +142,10 @@ With this foundation, you can move straight into the procedural sections and bui
 - `192.168.154.133:5000/kubespray/quay.io`
 - `192.168.154.133:5000/kubespray/registry.k8s.io`
 
-**CRI:** containerd (with nerdctl & ctr)  
-**CNI:** Calico (KDD CRDs)
-**Kubernetes version:** 1.33.3
-**Kubespray version:** 2.28.0
+##### ***CRI:*** containerd (with nerdctl & ctr)
+##### ***CNI:*** Calico (KDD CRDs)
+##### ***Kubernetes version:*** 1.33.3
+##### ***Kubespray version:*** 2.28.0
 
 ---
 
@@ -307,7 +307,7 @@ cd /opt/kubespray/contrib/offline
      ```bash
      dnf install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-     # Add to Docker ExecStart (drop-in file):
+     # Add to /usr/lib/systemcd/system/docker.service file on ExecStart section(drop-in file):
      #   --insecure-registry=192.168.154.133:5000
      systemctl daemon-reload
      systemctl restart docker
