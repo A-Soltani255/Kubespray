@@ -287,9 +287,8 @@ cd /opt/kubespray/contrib/offline
      tar xvf mnt.tar.gz -C /
      ```
    - Use your helper to push packages + repodata into a YUM (hosted) repo (depth=1):
-     ```bash
-     ./files-push-repo.sh
-     ```
+     [./files-push-repo.sh](#files-push-repo)
+     <a id="back-to-files-push-repo"></a>
    - Distribute a `local.repo` to **all offline hosts** under `/etc/yum.repos.d/` pointing to the Nexus YUM baseurl(s):  
      ```ini
       [docker-from-nexus]
@@ -516,7 +515,7 @@ kubectl -n kube-system delete deploy -l k8s-app=dns-autoscaler --ignore-not-foun
 
 ---
 
-## 7) Troubleshooting Cheatsheet (from real errors we fixed)
+## 7) Troubleshooting Cheatsheet (from real errors I fixed)
 
 - **HTTPS attempted against HTTP registry**
   - Symptom: `server ... does not seem to support HTTPS`
@@ -1630,6 +1629,8 @@ echo "Missing: ${#missing[@]}   (saved to $OUT)"
 
 ```
 
+[↩ back to downloader scripts list](#back-to-files-push-repo)
+<a id="files-push-repo"></a>
 #### `files-push-repo.sh`
 ```bash
 #!/bin/bash
