@@ -470,10 +470,53 @@ Copy your prepared **group_vars** into place:
 - [inventory/mycluster/group_vars/k8s-cluster.yml](#gv-k8s)
 - [inventory/mycluster/group_vars/containerd.yml](#gv-containerd)
 
+#### Log visibility in Kubespray (`no_log` & `unsafe_show_logs`)
+- `no_log` (Ansible): hides module args/results in output/logs. Ansible default is false, but Kubespray often sets `no_log: "{{ not (unsafe_show_logs | bool) }}"`, so the effective default is hidden.
+- `unsafe_show_logs` (Kubespray): global switch (default false). Set to true to flip most Kubespray tasks to show full output (useful for deep debugging).
+- How to enable (temporarily): per cluster in `inventory/mycluster/group_vars/all/all.yml` → unsafe_show_logs: true, or per run: `ansible-playbook … -e unsafe_show_logs=true -vvv`
+- Security note: enabling exposes secrets (tokens/passwords/certs). Use briefly, then set back to `false` and scrub any captured logs.
+
+
 
 Run the deployment:
 ```bash
-ansible-playbook -i inventory/mycluster/hosts.yaml -b cluster.yml
+ansible-playbook -i inventory/mycluster/hosts.yaml -b cluster.yml -vv
+```
+
+If everything completes successfully, the output should look like the following—no failures.
+```
+Saturday 16 August 2025  22:24:24 -0400 (0:00:00.044)       0:05:20.961 *******
+Saturday 16 August 2025  22:24:24 -0400 (0:00:00.043)       0:05:21.005 *******
+Saturday 16 August 2025  22:24:24 -0400 (0:00:00.040)       0:05:21.046 *******
+Saturday 16 August 2025  22:24:24 -0400 (0:00:00.037)       0:05:21.083 *******
+Saturday 16 August 2025  22:24:24 -0400 (0:00:00.035)       0:05:21.119 *******
+
+PLAY RECAP *****************************************************************************************************************************************************************************************************************************
+master1                    : ok=510  changed=48   unreachable=0    failed=0    skipped=882  rescued=0    ignored=1
+worker1                    : ok=323  changed=24   unreachable=0    failed=0    skipped=533  rescued=0    ignored=1
+worker2                    : ok=323  changed=24   unreachable=0    failed=0    skipped=533  rescued=0    ignored=1
+
+Saturday 16 August 2025  22:24:24 -0400 (0:00:00.102)       0:05:21.222 *******
+===============================================================================
+container-engine/containerd : Containerd | Unpack containerd archive ------------------------------------------------------------------------------------------------------------------------------------------------------------ 7.83s
+/opt/kubespray/roles/container-engine/containerd/tasks/main.yml:7 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+system_packages : Manage packages ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- 7.38s
+/opt/kubespray/roles/system_packages/tasks/main.yml:37 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+kubernetes-apps/ansible : Kubernetes Apps | CoreDNS ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- 5.01s
+/opt/kubespray/roles/kubernetes-apps/ansible/tasks/main.yml:14 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+container-engine/containerd : Containerd | Write hosts.toml file ---------------------------------------------------------------------------------------------------------------------------------------------------------------- 4.11s
+/opt/kubespray/roles/container-engine/containerd/tasks/main.yml:85 --------------------------------------------------------------------------------------------------------------------------------------------------------------------
+container-engine/validate-container-engine : Populate service facts ------------------------------------------------------------------------------------------------------------------------------------------------------------- 4.10s
+/opt/kubespray/roles/container-engine/validate-container-engine/tasks/main.yml:25 -----------------------------------------------------------------------------------------------------------------------------------------------------
+kubernetes/node : Install | Copy kubelet binary from download dir --------------------------------------------------------------------------------------------------------------------------------------------------------------- 4.06s
+/opt/kubespray/roles/kubernetes/node/tasks/install.yml:13 -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+network_plugin/calico : Calico | Create calico manifests ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ 3.68s
+/opt/kubespray/roles/network_plugin/calico/tasks/install.yml:382 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+download : Download_file | Download item ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- 3.19s
+/opt/kubespray/roles/download/tasks/download_file.yml:59 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+container-engine/crictl : Extract_file | Unpacking archive ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- 3.06s
+/opt/kubespray/roles/download/tasks/extract_file.yml:2 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 ```
 
 ---
