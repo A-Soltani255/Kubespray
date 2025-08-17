@@ -8,9 +8,9 @@ This document documents—end-to-end—how to build and operate a Kubernetes 1.3
 
 The environment used throughout:
 - Control plane: master1 (`192.168.154.134`) — single-node control plane with collocated etcd
-- Workers: worker1 (192.168.154.135), worker2 (192.168.154.136)
-- Build/automation: kubespray (192.168.154.137) — also serves offline files over HTTP (:8080)
-- Artifact hub: nexus (192.168.154.133) — YUM (hosted) for RPMs and Docker (hosted) registry on :5000 for images
+- Workers: worker1 (`192.168.154.135`), worker2 (`192.168.154.136`)
+- Build/automation: kubespray (`192.168.154.137`) — also serves offline files over HTTP (`:8080`)
+- Artifact hub: nexus (`192.168.154.133`) — YUM (hosted) for RPMs and Docker (hosted) registry on :5000 for images
 
 > Design choices (and why):
 >- Air-gapped: reduces supply-chain risk, satisfies compliance, and guarantees repeatable builds by eliminating “latest from the Internet”.
@@ -280,6 +280,7 @@ cd /opt/kubespray/contrib/offline
 
 1) **Push RPMs**  
    - Copy `mnt.tar.gz` to Nexus and extract:
+     
      ```bash
      tar xvf mnt.tar.gz -C /
      ```
