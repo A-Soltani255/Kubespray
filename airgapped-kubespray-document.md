@@ -397,16 +397,21 @@ On the Kubespray host:
 cd /opt
 tar xvf kubespray.tar.gz
 
-python3 -m venv /opt/ks-venv
+dnf install -y python3.12 python3.12-pip
+alternatives --install /usr/bin/python3 python /usr/bin/python3.12 10
+alternatives --install /usr/bin/python3 python /usr/bin/python3.9 20
+
+dnf install -y ansible
+python3.12 -m pip venv /opt/ks-venv
 source /opt/ks-venv/bin/activate
-pip install --no-index --find-links /opt/pip-req -r /opt/kubespray/requirements.txt
+python3.12 -m pip install --no-index --find-links /opt/pip-req -r /opt/kubespray/requirements.txt
 
 # Build the proper inventory using Kubespray's built-in inventory builder.
 cd /opt/kubespray
 mkdir -p inventory/mycluster
 declare -a IPS=(192.168.154.134 192.168.154.135 192.168.154.136)
 CONFIG_FILE=inventory/mycluster/hosts.yaml \\
-python3 contrib/inventory_builder/inventory.py "${{IPS[@]}}"
+python3.12 -m pip contrib/inventory_builder/inventory.py "${{IPS[@]}}"
 ```
 #### Notes
 
