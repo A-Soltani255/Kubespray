@@ -143,8 +143,9 @@ With this foundation, you can move straight into the procedural sections and bui
 - `192.168.154.133:5000/kubespray/registry.k8s.io`
 
 **CRI:** containerd (with nerdctl & ctr)  
-**CNI:** Calico (KDD CRDs)  
-**Kube version:** 1.33.3
+**CNI:** Calico (KDD CRDs)
+**Kubernetes version:** 1.33.3
+**Kubespray version:** 2.28.0
 
 ---
 
