@@ -357,39 +357,61 @@ python3 -m venv /opt/ks-venv
 source /opt/ks-venv/bin/activate
 pip install --no-index --find-links /opt/pip-req -r /opt/kubespray/requirements.txt
 
+# Build the proper inventory using Kubespray's built-in inventory builder.
 cd /opt/kubespray
 mkdir -p inventory/mycluster
 declare -a IPS=(192.168.154.134 192.168.154.135 192.168.154.136)
 CONFIG_FILE=inventory/mycluster/hosts.yaml \\
 python3 contrib/inventory_builder/inventory.py "${{IPS[@]}}"
 ```
+#### Notes
 
-**Example `inventory/mycluster/hosts.yaml` (trimmed):**
+- With Kubespray, the inventory builder will make only the first IP a control-plane + etcd node by default and put the rest as workers. If you want multiple masters, you just edit the generated inventory to add those hosts to the `kube_control_plane` (and usually `etcd`) groups. So you should open `inventory/mycluster/hosts.yaml` and put the extra masters under the `kube_control_plane` (and, typically, `etcd`) groups.
+- etcd size should be odd (1, 3, 5…). For HA, use 3 etcd members—often colocated on the 3 masters.
+- Masters are tainted by default (unschedulable); if you want them to run workloads, remove taints later.
+- For multi-master you need a stable API endpoint. Either provide an external load balancer (VIP/DNS) to front the masters, or enable a built-in option (e.g., kube-vip/HAProxy depending on your Kubespray version) in group vars. Set the control-plane endpoint to that VIP/DNS before deploying.
+
+
+**Example `inventory/mycluster/hosts.yaml`:**
 ```yaml
 all:
   hosts:
     master1:
       ansible_host: 192.168.154.134
+      ip: 192.168.154.134
+      access_ip: 192.168.154.134
+      ansible_user: root
+      ansible_python_interpreter: /usr/bin/python3
     worker1:
       ansible_host: 192.168.154.135
+      ip: 192.168.154.135
+      access_ip: 192.168.154.135
+      ansible_user: root
+      ansible_python_interpreter: /usr/bin/python3
     worker2:
       ansible_host: 192.168.154.136
+      ip: 192.168.154.136
+      access_ip: 192.168.154.136
+      ansible_user: root
+      ansible_python_interpreter: /usr/bin/python3
   children:
     kube_control_plane:
       hosts:
-        master1: {{}}
+        master1: {}
     kube_node:
       hosts:
-        worker1: {{}}
-        worker2: {{}}
+        worker1: {}
+        worker2: {}
     etcd:
       hosts:
-        master1: {{}}
+        master1: {}
     k8s_cluster:
       children:
-        kube_control_plane: {{}}
-        kube_node: {{}}
-    calico_rr: {{hosts: {}}}
+        kube_control_plane: {}
+        kube_node: {}
+    calico_rr:
+      hosts: {}
+
 ```
 
 Copy your prepared **group_vars** into place:
@@ -1753,18 +1775,57 @@ echo "Done."
 
 **`/etc/containerd/certs.d/registry.k8s.io/hosts.toml`**
 ```toml
-server = "http://192.168.154.133:5000/kubespray/registry.k8s.io"
+server = "http://192.168.154.133:5000"
 [host."http://192.168.154.133:5000"]
   capabilities = ["pull","resolve"]
   skip_verify = true
+  override_path = true
+  [host."http://192.168.154.133:5000".header]
+    Authorization = ["Basic YWRtaW46MTIz"]
 ```
 
 **`/etc/containerd/certs.d/docker.io/hosts.toml`**
 ```toml
-server = "http://192.168.154.133:5000/kubespray/docker.io"
-[host."http://192.168.154.133:5000"]
+server = "http://192.168.154.133:5000"
+[host."http://192.168.154.133:5000/kubespray/docker.io"]
   capabilities = ["pull","resolve"]
   skip_verify = true
+  override_path = true
+  [host."http://192.168.154.133:5000/kubespray/docker.io".header]
+    Authorization = ["Basic YWRtaW46MTIz"]
+```
+
+**`/etc/containerd/certs.d/ghcr.io/hosts.toml`**
+```toml
+server = "http://192.168.154.133:5000"
+[host."http://192.168.154.133:5000/kubespray/ghcr.io"]
+  capabilities = ["pull","resolve"]
+  skip_verify = true
+  override_path = true
+  [host."http://192.168.154.133:5000/kubespray/ghcr.io".header]
+    Authorization = ["Basic YWRtaW46MTIz"]
+```
+
+**`/etc/containerd/certs.d/quay.io/hosts.toml`**
+```toml
+server = "http://192.168.154.133:5000"
+[host."http://192.168.154.133:5000/kubespray/quay.io"]
+  capabilities = ["pull","resolve"]
+  skip_verify = true
+  override_path = true
+  [host."http://192.168.154.133:5000/kubespray/quay.io".header]
+    Authorization = ["Basic YWRtaW46MTIz"]
+```
+
+**`/etc/containerd/certs.d/registry.k8s.io/hosts.toml`**
+```toml
+server = "http://192.168.154.133:5000"
+[host."http://192.168.154.133:5000/kubespray/registry.k8s.io"]
+  capabilities = ["pull","resolve"]
+  skip_verify = true
+  override_path = true
+  [host."http://192.168.154.133:5000/kubespray/registry.k8s.io".header]
+    Authorization = ["Basic YWRtaW46MTIz"]
 ```
 
 If your Nexus requires auth and you configured `containerd_registry_auth(s)`, containerd will use the stored credentials. Only if you _must_ force a header, you can use `containerd_custom_hosts_conf` to inject:
