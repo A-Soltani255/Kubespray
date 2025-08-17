@@ -573,7 +573,7 @@ Expected pods (steady state): apiserver/scheduler/controller-manager on master1;
 ## 10) Appendices (effective configurations)
 
 <a id="gv-offline"></a>
-[↩ back to yml list](#gv-list)
+[↩ back to YMLs list](#gv-list)
 ### A) `inventory/mycluster/group_vars/offline.yml`
 ```yaml
 ---
@@ -843,7 +843,7 @@ github_image_repo: "192.168.154.133:5000/kubespray/ghcr.io"
   # 
 
 ```
-[↩ back to list](#gv-list)
+[↩ back to YMLs list](#gv-list)
 <a id="gv-k8s"></a>
 ### B) `inventory/mycluster/group_vars/k8s-cluster.yml`
 ```yaml
@@ -1231,7 +1231,7 @@ kubeadm_patches: []
 remove_anonymous_access: false
 
 ```
-[↩ back to list](#gv-list)
+[↩ back to YMLs list](#gv-list)
 <a id="gv-containerd"></a>
 ### C) `inventory/mycluster/group_vars/containerd.yml`
 ```yaml
