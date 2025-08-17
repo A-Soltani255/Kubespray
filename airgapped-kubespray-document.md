@@ -1605,7 +1605,7 @@ done
 tar cvfz "${IMAGES_ARCHIVE}" "${IMAGES_DIR}"
 
 ```
-[↩ back to downloader scripts list](#gv-list)
+[↩ back to Push RPMs section](#gv-list)
 <a id="download-left-over-images"></a>
 #### `images-test.sh`
 ```bash
