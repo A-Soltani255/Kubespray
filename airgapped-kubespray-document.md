@@ -359,10 +359,10 @@ cd /opt/kubespray/contrib/offline
 
      docker login 192.168.154.133:5000
      ```
+     <a id="load-retag-push"></a>
    - Load & retag & push:
-     ```bash
-     ./images-load-and-retag.sh
-     ```
+     [./images-load-and-retag.sh](sh-images-load-and-retag)
+     
    This script re-tags images under `192.168.154.133:5000/kubespray/<upstream>/<image>:<tag>` and pushes them.
 
 ---
@@ -1439,7 +1439,7 @@ containerd_config:
 
 ### D) Offline Lists (from contrib/offline)
 
-#### `files.list`
+#### Example of `files.list`
 ```text
 https://dl.k8s.io/release/v1.33.3/bin/linux/amd64/kubelet
 https://dl.k8s.io/release/v1.33.3/bin/linux/amd64/kubectl
@@ -1467,7 +1467,7 @@ https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard
 
 ```
 
-#### `images.list`
+#### Example of `images.list`
 ```text
 docker.io/mirantis/k8s-netchecker-server:v1.2.2
 docker.io/mirantis/k8s-netchecker-agent:v1.2.2
@@ -1726,6 +1726,9 @@ echo "🎉 Finished. Successful uploads recorded in: $LOG_FILE"
 
 ```
 
+<a id="sh-images-load-and-retag"></a>
+
+[↩ back to load & retag & push section](#load-retag-push)
 #### `images-load-and-retag.sh`
 ```bash
 #!/usr/bin/env bash
