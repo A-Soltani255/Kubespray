@@ -458,11 +458,11 @@ all:
 ```
 
 Copy your prepared **group_vars** into place:
-```
-inventory/mycluster/group_vars/offline.yml
-inventory/mycluster/group_vars/k8s-cluster.yml
-inventory/mycluster/group_vars/containerd.yml   # NEW
-```
+
+- [inventory/mycluster/group_vars/offline.yml](#sh-offline)
+- inventory/mycluster/group_vars/k8s-cluster.yml
+- inventory/mycluster/group_vars/containerd.yml
+
 
 Run the deployment:
 ```bash
@@ -569,6 +569,7 @@ Expected pods (steady state): apiserver/scheduler/controller-manager on master1;
 
 ## 10) Appendices (effective configurations)
 
+<a id="sh-offline"></a>
 ### A) `inventory/mycluster/group_vars/offline.yml`
 ```yaml
 ---
