@@ -269,7 +269,7 @@ tar cvfz pypi.tar.gz ./pip-req
 ### 2.4 Generate offline lists from Kubespray and download everything
 ```bash
 cd /opt/kubespray/contrib/offline
-./generate_list.sh             # creates tmp/files.list and tmp/images.list
+./generate_list.sh             # creates tmp/files.list and tmp/images.list files
 ```
 <a id="dowloader scripts list"></a>
 - [`./files.sh`](#download-files)                               # downloads all required binaries per files.list
