@@ -1605,7 +1605,7 @@ done
 tar cvfz "${IMAGES_ARCHIVE}" "${IMAGES_DIR}"
 
 ```
-[↩ back to Push RPMs section](#gv-list)
+[↩ back to downloader scripts list](#gv-list)
 <a id="download-left-over-images"></a>
 #### `images-test.sh`
 ```bash
@@ -1628,8 +1628,8 @@ echo "Missing: ${#missing[@]}   (saved to $OUT)"
 
 
 ```
-
-[↩ back to downloader scripts list](#back-to-files-push-repo)
+back to Push RPMs section
+[↩ back to Push RPMs section](#back-to-files-push-repo)
 <a id="files-push-repo"></a>
 #### `files-push-repo.sh`
 ```bash
