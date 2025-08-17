@@ -270,10 +270,12 @@ tar cvfz pypi.tar.gz ./pip-req
 ```bash
 cd /opt/kubespray/contrib/offline
 ./generate_list.sh             # creates tmp/files.list and tmp/images.list
-./files.sh                     # downloads all required binaries per files.list
-./images.sh                    # pulls & saves container images listed in images.list
-./images-test.sh               # optional validation of saved images
 ```
+<a id="dowloader scripts list"></a>
+- [`./files.sh`](#download-files)                               # downloads all required binaries per files.list
+- [`./images.sh`](#download-images)                             # pulls & saves container images listed in images.list
+- [`./images-test.sh`](#download-left-over-images)              # optional validation of saved images and download the leftover images
+
 > `images.sh` requires Docker running on the internet VM.
 
 ### 2.5 Seed **Nexus** with YUM + Docker hosted registries (in the offline LAN)
@@ -1524,6 +1526,8 @@ registry.k8s.io/kube-proxy:v1.33.3
 
 ### E) Helper Scripts (verbatim)
 
+[↩ back to downloader scripts list](#gv-list)
+<a id="download-files"></a>
 #### `files.sh`
 ```bash
 #!/bin/bash
@@ -1554,6 +1558,75 @@ done < "${FILES_LIST}"
 
 # Archive the downloaded files
 tar -czvf "${OFFLINE_FILES_ARCHIVE}" "${OFFLINE_FILES_DIR_NAME}"
+
+```
+[↩ back to downloader scripts list](#gv-list)
+<a id="download-images"></a>
+#### `images.sh`
+```bash
+#!/bin/bash
+
+NEXUS_REPO="192.168.10.1:4000/kubespray" # Update this with your Nexus repository IP and port
+CURRENT_DIR="/opt"
+IMAGES_ARCHIVE="${CURRENT_DIR}/container-images.tar.gz"
+IMAGES_DIR="${CURRENT_DIR}/container-images"
+IMAGES_LIST="${CURRENT_DIR}/kubespray/contrib/offline/tmp/images.list"
+
+# Ensure the images list exists
+if [ ! -f "${IMAGES_LIST}" ]; then
+    echo "${IMAGES_LIST} should exist, run ./generate_list.sh first."
+    exit 1
+fi
+
+# Clean up previous images
+rm -f  "${IMAGE_TAR_FILE}"
+rm -rf "${IMAGE_DIR}"
+mkdir  "${IMAGE_DIR}"
+
+# Pull each image from the list
+while read -r image; do
+  if ! docker pull "${image}"; then
+    exit 1
+  fi
+done < "${IMAGES_LIST}"
+
+IMAGES=$(docker images --format "{{.Repository}}:{{.Tag}}")
+
+# Tag and save each image to a tar.gz file
+for i in $IMAGES;
+do
+  NEW_IMAGE=${NEXUS_REPO}/${i}
+  TAR_FILE=$(echo ${i} | sed 's/[\/:]/-/g')
+  docker tag $i ${NEW_IMAGE}
+  docker rmi $i
+  docker save ${NEW_IMAGE} | gzip > ${IMAGES_DIR}/${TAR_FILE}.tar.gz
+done
+
+# Archive the saved images
+tar cvfz "${IMAGES_ARCHIVE}" "${IMAGES_DIR}"
+
+```
+[↩ back to downloader scripts list](#gv-list)
+<a id="download-left-over-images"></a>
+#### `images-test.sh`
+```bash
+NEXUS_REPO="172.20.117.211:7051/kubespray"
+IMAGES_LIST="/opt/kubespray/images.list"
+OUT="/opt/missing_images.txt"
+
+mapfile -t missing < <(
+  sed -e 's/\r$//' -e 's/[[:space:]]*#.*$//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$IMAGES_LIST" \
+  | awk 'NF' \
+  | while read -r img; do
+      docker image inspect "$img" >/dev/null 2>&1 \
+      || docker image inspect "${NEXUS_REPO}/${img}" >/dev/null 2>&1 \
+      || echo "$img"
+    done
+)
+
+printf '%s\n' "${missing[@]}" | tee "$OUT"
+echo "Missing: ${#missing[@]}   (saved to $OUT)"
+
 
 ```
 
@@ -1649,73 +1722,6 @@ for entry in "${REPOS[@]}"; do
 done
 
 echo "🎉 Finished. Successful uploads recorded in: $LOG_FILE"
-
-
-```
-
-#### `images.sh`
-```bash
-#!/bin/bash
-
-NEXUS_REPO="192.168.10.1:4000/kubespray" # Update this with your Nexus repository IP and port
-CURRENT_DIR="/opt"
-IMAGES_ARCHIVE="${CURRENT_DIR}/container-images.tar.gz"
-IMAGES_DIR="${CURRENT_DIR}/container-images"
-IMAGES_LIST="${CURRENT_DIR}/kubespray/contrib/offline/tmp/images.list"
-
-# Ensure the images list exists
-if [ ! -f "${IMAGES_LIST}" ]; then
-    echo "${IMAGES_LIST} should exist, run ./generate_list.sh first."
-    exit 1
-fi
-
-# Clean up previous images
-rm -f  "${IMAGE_TAR_FILE}"
-rm -rf "${IMAGE_DIR}"
-mkdir  "${IMAGE_DIR}"
-
-# Pull each image from the list
-while read -r image; do
-  if ! docker pull "${image}"; then
-    exit 1
-  fi
-done < "${IMAGES_LIST}"
-
-IMAGES=$(docker images --format "{{.Repository}}:{{.Tag}}")
-
-# Tag and save each image to a tar.gz file
-for i in $IMAGES;
-do
-  NEW_IMAGE=${NEXUS_REPO}/${i}
-  TAR_FILE=$(echo ${i} | sed 's/[\/:]/-/g')
-  docker tag $i ${NEW_IMAGE}
-  docker rmi $i
-  docker save ${NEW_IMAGE} | gzip > ${IMAGES_DIR}/${TAR_FILE}.tar.gz
-done
-
-# Archive the saved images
-tar cvfz "${IMAGES_ARCHIVE}" "${IMAGES_DIR}"
-
-```
-
-#### `images-test.sh`
-```bash
-NEXUS_REPO="172.20.117.211:7051/kubespray"
-IMAGES_LIST="/opt/kubespray/images.list"
-OUT="/opt/missing_images.txt"
-
-mapfile -t missing < <(
-  sed -e 's/\r$//' -e 's/[[:space:]]*#.*$//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$IMAGES_LIST" \
-  | awk 'NF' \
-  | while read -r img; do
-      docker image inspect "$img" >/dev/null 2>&1 \
-      || docker image inspect "${NEXUS_REPO}/${img}" >/dev/null 2>&1 \
-      || echo "$img"
-    done
-)
-
-printf '%s\n' "${missing[@]}" | tee "$OUT"
-echo "Missing: ${#missing[@]}   (saved to $OUT)"
 
 
 ```
