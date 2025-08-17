@@ -288,13 +288,55 @@ cd /opt/kubespray/contrib/offline
      ./files-push-repo.sh
      ```
    - Distribute a `local.repo` to **all offline hosts** under `/etc/yum.repos.d/` pointing to the Nexus YUM baseurl(s):  
-     Example:
      ```ini
-     [local-baseos]
-     name=Local BaseOS
-     baseurl=http://192.168.154.133:8081/repository/baseos/
-     enabled=1
-     gpgcheck=0
+      [docker-from-nexus]
+      name=Docker CE (from Nexus)
+      baseurl=http://192.168.154.133:8081/repository/local/Docker-Ce-Stable
+      enabled=1
+      gpgcheck=0
+      repo_gpgcheck=0
+      module_hotfixes=1
+      
+      [appstream]
+      name=appstream (from Nexus)
+      baseurl=http://192.168.154.133:8081/repository/local/AppStream/
+      enabled=1
+      gpgcheck=0
+      repo_gpgcheck=0
+      module_hotfixes=1
+      
+      [baseos]
+      name=baseos (from Nexus)
+      baseurl=http://192.168.154.133:8081/repository/local/BaseOS/
+      enabled=1
+      gpgcheck=0
+      repo_gpgcheck=0
+      module_hotfixes=1
+      
+      [epel]
+      name=epel (from Nexus)
+      baseurl=http://192.168.154.133:8081/repository/local/EPEL/
+      enabled=1
+      gpgcheck=0
+      repo_gpgcheck=0
+      module_hotfixes=1
+      
+      [extras]
+      name=extras (from Nexus)
+      baseurl=http://192.168.154.133:8081/repository/local/Extras/
+      enabled=1
+      gpgcheck=0
+      repo_gpgcheck=0
+      module_hotfixes=1
+      
+      [epel-cisco-openh264]
+      name=epel-cisco-openh264 (from Nexus)
+      baseurl=http://192.168.154.133:8081/repository/local/Epel-Cisco-Openh264/
+      enabled=1
+      gpgcheck=0
+      repo_gpgcheck=0
+      module_hotfixes=1
+
      ```
    - Refresh + update everywhere:
      ```bash
