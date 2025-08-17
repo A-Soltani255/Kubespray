@@ -461,8 +461,8 @@ all:
 Copy your prepared **group_vars** into place:
 
 - [inventory/mycluster/group_vars/offline.yml](#gv-offline)
-- inventory/mycluster/group_vars/k8s-cluster.yml
-- inventory/mycluster/group_vars/containerd.yml
+- [inventory/mycluster/group_vars/k8s-cluster.yml](#gv-k8s)
+- [inventory/mycluster/group_vars/containerd.yml](#gv-containerd)
 
 
 Run the deployment:
@@ -841,7 +841,8 @@ github_image_repo: "192.168.154.133:5000/kubespray/ghcr.io"
   # 
 
 ```
-
+[↩ back to list](#gv-list)
+<a id="gv-k8s"></a>
 ### B) `inventory/mycluster/group_vars/k8s-cluster.yml`
 ```yaml
 ---
@@ -1228,7 +1229,8 @@ kubeadm_patches: []
 remove_anonymous_access: false
 
 ```
-
+[↩ back to list](#gv-list)
+<a id="gv-containerd"></a>
 ### C) `inventory/mycluster/group_vars/containerd.yml`
 ```yaml
 ---
