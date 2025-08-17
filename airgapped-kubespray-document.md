@@ -473,7 +473,7 @@ Copy your prepared **group_vars** into place:
 #### Log visibility in Kubespray (`no_log` & `unsafe_show_logs`)
 - `no_log` (Ansible): hides module args/results in output/logs. Ansible default is false, but Kubespray often sets `no_log: "{{ not (unsafe_show_logs | bool) }}"`, so the effective default is hidden.
 - `unsafe_show_logs` (Kubespray): global switch (default false). Set to true to flip most Kubespray tasks to show full output (useful for deep debugging).
-- How to enable (temporarily): per cluster in `inventory/mycluster/group_vars/all/all.yml` → unsafe_show_logs: true, or per run: `ansible-playbook … -e unsafe_show_logs=true -vvv`
+- How to enable (temporarily): per cluster in `inventory/mycluster/group_vars/all/all.yml` → `unsafe_show_logs: true`, or per run: `ansible-playbook … -e unsafe_show_logs=true -vvv`
 - Security note: enabling exposes secrets (tokens/passwords/certs). Use briefly, then set back to `false` and scrub any captured logs.
 
 
