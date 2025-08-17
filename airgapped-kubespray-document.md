@@ -457,9 +457,10 @@ all:
 
 ```
 
+<a id="gv-list"></a>
 Copy your prepared **group_vars** into place:
 
-- [inventory/mycluster/group_vars/offline.yml](#sh-offline)
+- [inventory/mycluster/group_vars/offline.yml](#gv-offline)
 - inventory/mycluster/group_vars/k8s-cluster.yml
 - inventory/mycluster/group_vars/containerd.yml
 
@@ -569,7 +570,8 @@ Expected pods (steady state): apiserver/scheduler/controller-manager on master1;
 
 ## 10) Appendices (effective configurations)
 
-<a id="sh-offline"></a>
+<a id="gv-offline"></a>
+[↩ back to yml list](#gv-list)
 ### A) `inventory/mycluster/group_vars/offline.yml`
 ```yaml
 ---
