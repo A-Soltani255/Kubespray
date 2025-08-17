@@ -1628,7 +1628,7 @@ echo "Missing: ${#missing[@]}   (saved to $OUT)"
 
 
 ```
-back to Push RPMs section
+
 [↩ back to Push RPMs section](#back-to-files-push-repo)
 <a id="files-push-repo"></a>
 #### `files-push-repo.sh`
