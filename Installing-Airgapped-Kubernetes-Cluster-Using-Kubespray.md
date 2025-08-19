@@ -384,7 +384,8 @@ cd /opt/kubespray/contrib/offline
 ```
 2) Serve them over HTTP:
 ```bash
-python3 -m http.server 8080 --directory /srv/offline-files
+nohup python3.12 -m http.server 8080 --directory /srv/offline-files >/var/log/offline-files-http.log 2>&1 &
+echo $! > /var/run/offline-files-http.pid
 # files_repo => http://192.168.154.137:8080
 ```
 
