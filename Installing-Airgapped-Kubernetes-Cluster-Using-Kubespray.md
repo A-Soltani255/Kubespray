@@ -167,7 +167,26 @@ With this foundation, you can move straight into the procedural sections and bui
    reboot
    ```
 
-5. **Firewall:** allow intra-cluster traffic or temporarily disable during bootstrap. Typical required ports: 6443, 2379–2380 (etcd), 10250–10259, 8472 (VXLAN when using Calico), 30000–32767 (NodePort), etc.
+5. **Firewall:** allow intra-cluster traffic or temporarily disable it during bootstrap. This typically requires the cluster nodes and their CIDR IP ranges.
+
+   ```bash
+   # Accept only cluster nodes
+   firewall-cmd --zone=trusted --add-source=192.168.154.134 --permanent
+   firewall-cmd --zone=trusted --add-source=192.168.154.135 --permanent
+   firewall-cmd --zone=trusted --add-source=192.168.154.136 --permanent
+
+   # Accept only cluster CIDRs (replace with your values)
+   firewall-cmd --zone=trusted --add-source=10.233.64.0/18 --permanent
+   firewall-cmd --zone=trusted --add-source=10.233.0.0/18 --permanent
+
+   # Apply
+   firewall-cmd --reload
+
+   #Verfy your 
+   firewall-cmd --liste-sources --zone=trusted
+   ```
+   
+OR
 
    ```bash
    systemctl disable firewalld && systemctl stop firewalld
@@ -240,12 +259,10 @@ tar cvzf mnt.tar.gz /mnt
 
 **Why:** `mnt/` contains all enabled repos + metadata. You’ll push these into a YUM (hosted) repo on Nexus.
 
-### 2.2 Get Kubespray source and bundle it
+### 2.2 Get the latest Kubespray source from https://github.com/kubernetes-sigs/kubespray
 ```bash
-dnf install -y git
 cd /opt
-git clone https://github.com/kubernetes-sigs/kubespray.git
-tar cvzf kubespray.tar.gz kubespray
+curl -LO https://github.com/kubernetes-sigs/kubespray/archive/refs/tags/v2.28.0.tar.gz
 ```
 
 ### 2.3 Prepare Python 3.12, virtualenv, Ansible, and wheel cache
@@ -285,7 +302,7 @@ cd /opt/kubespray/contrib/offline
    - Copy `mnt.tar.gz` to Nexus and extract:
      
      ```bash
-     tar xvf mnt.tar.gz -C /
+     tar xvzf mnt.tar.gz -C /opt
      ```
    - Use your helper to push packages + repodata into a YUM (hosted) repo (depth=1):
      [./files-push-repo.sh](#files-push-repo)
@@ -341,7 +358,7 @@ cd /opt/kubespray/contrib/offline
       module_hotfixes=1
 
      ```
-   - Refresh + update everywhere:
+   - Refresh + update on your **all offline hosts**:
      ```bash
      dnf clean all && dnf makecache
      dnf update -y && dnf upgrade -y
@@ -369,8 +386,11 @@ cd /opt/kubespray/contrib/offline
 
 ## 3) Kubespray Host (offline) — Stage binaries and serve via HTTP
 
-1) Place offline binaries at `/srv/offline-files/` matching the paths Kubespray expects (snippet):
+1) Place the offline-files.tar.gz at `/srv`:
 ```
+cd /srv
+tar xvzf offline-files.tar.gz
+
 /srv/offline-files/
   dl.k8s.io/release/v1.33.3/bin/linux/amd64/{kubeadm,kubelet,kubectl}
   get.helm.sh/helm-v3.18.4-linux-amd64.tar.gz
@@ -383,13 +403,40 @@ cd /opt/kubespray/contrib/offline
   github.com/projectcalico/calico/releases/download/v3.29.4/calicoctl-linux-amd64
   github.com/projectcalico/calico/archive/v3.29.4.tar.gz
 ```
-2) Serve them over HTTP:
+2.1) Option1 ---> Serve them over HTTP:
 ```bash
 nohup python3.12 -m http.server 8080 --directory /srv/offline-files >/var/log/offline-files-http.log 2>&1 &
 echo $! > /var/run/offline-files-http.pid
 # files_repo => http://192.168.154.137:8080
 ```
 
+2.1) Option2 (Recommended) ---> Serve them via an raw (hosted) repository on nexus named **files**:
+```bash
+cd /srv
+tar xvzf offline-files.tar.gz
+mkdir files
+cp -r offline-files/* files
+
+/srv/files/
+  dl.k8s.io/release/v1.33.3/bin/linux/amd64/{kubeadm,kubelet,kubectl}
+  get.helm.sh/helm-v3.18.4-linux-amd64.tar.gz
+  github.com/containerd/containerd/releases/download/v2.1.3/containerd-2.1.3-linux-amd64.tar.gz
+  github.com/opencontainers/runc/releases/download/v1.3.0/runc.amd64
+  github.com/kubernetes-sigs/cri-tools/releases/download/v1.33.0/crictl-v1.33.0-linux-amd64.tar.gz
+  github.com/containernetworking/plugins/releases/download/v1.4.1/cni-plugins-linux-amd64-v1.4.1.tgz
+  github.com/etcd-io/etcd/releases/download/v3.5.21/etcd-v3.5.21-linux-amd64.tar.gz
+  github.com/containerd/nerdctl/releases/download/v2.1.2/nerdctl-2.1.2-linux-amd64.tar.gz
+  github.com/projectcalico/calico/releases/download/v3.29.4/calicoctl-linux-amd64
+  github.com/projectcalico/calico/archive/v3.29.4.tar.gz
+
+FILES=$(find raw -type f)
+
+# Push the files to the repo named 'files' (replace the repo url with your values)
+for i in $FILES do; curl -v --user 'admin:123' --upload-file $i http://192.168.154.133:8081/repository/${i}; done
+
+# files_repo => http://192.168.154.133:8081/repository/files
+
+```
 ---
 
 ## 4) Kubespray Inventory / Python / Install
@@ -626,8 +673,11 @@ Expected pods (steady state): apiserver/scheduler/controller-manager on master1;
 ### A) `inventory/mycluster/group_vars/offline.yml`
 ```yaml
 ---
-# === Offline root served by your mini HTTP server ===
-files_repo: "http://192.168.154.137:8080"
+# === Offline root if served by your mini HTTP server ===> files_repo: "http://192.168.154.137:8080"
+
+# === Offline root served by your raw (hosted) repository ===
+
+files_repo: "http://192.168.154.133:8081/repository/files"
 
 # === Common ===
 image_arch: "amd64"
