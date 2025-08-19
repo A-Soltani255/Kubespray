@@ -259,8 +259,9 @@ dnf install -y ansible
 python3 -m venv /opt/ks-venv
 source /opt/ks-venv/bin/activate
 
-python3.12 -m pip download -r /opt/kubespray/requirements.txt -d /opt/pip-req
-python3.12 -m pip download twine -d /opt/pip-req
+pip install --upgrade pip
+pip download -r /opt/kubespray/requirements.txt -d /opt/pip-req
+pip download twine -d /opt/pip-req
 tar cvfz pypi.tar.gz ./pip-req
 ```
 
