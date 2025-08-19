@@ -402,7 +402,7 @@ alternatives --install /usr/bin/python3 python /usr/bin/python3.12 10
 alternatives --install /usr/bin/python3 python /usr/bin/python3.9 20
 
 dnf install -y ansible
-python3.12 -m pip venv /opt/ks-venv
+python3.12 -m venv /opt/ks-venv
 source /opt/ks-venv/bin/activate
 python3.12 -m pip install --no-index --find-links /opt/pip-req -r /opt/kubespray/requirements.txt
 
