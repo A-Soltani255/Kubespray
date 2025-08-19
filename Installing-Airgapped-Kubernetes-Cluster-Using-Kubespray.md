@@ -1430,7 +1430,7 @@ containerd_config:
 
 #### Example of `files.list`
 ```text
-https://dl.k8s.io/release/v1.33.3/bin/linux/amd64/kubelet
+[https://dl.k8s.io/release/v1.33.3/bin/linux/amd64/kubelet
 https://dl.k8s.io/release/v1.33.3/bin/linux/amd64/kubectl
 https://dl.k8s.io/release/v1.33.3/bin/linux/amd64/kubeadm
 https://github.com/etcd-io/etcd/releases/download/v3.5.21/etcd-v3.5.21-linux-amd64.tar.gz
@@ -1452,7 +1452,29 @@ https://github.com/containerd/containerd/releases/download/v2.1.3/containerd-2.1
 https://github.com/Mirantis/cri-dockerd/releases/download/v0.3.18/cri-dockerd-0.3.18.amd64.tgz
 https://github.com/lework/skopeo-binary/releases/download/v1.16.1/skopeo-linux-amd64
 https://github.com/mikefarah/yq/releases/download/v4.42.1/yq_linux_amd64
-https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
+https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml](https://dl.k8s.io/release/v1.32.5/bin/linux/amd64/kubelet
+https://dl.k8s.io/release/v1.32.5/bin/linux/amd64/kubectl
+https://dl.k8s.io/release/v1.32.5/bin/linux/amd64/kubeadm
+https://github.com/etcd-io/etcd/releases/download/v3.5.16/etcd-v3.5.16-linux-amd64.tar.gz
+https://github.com/containernetworking/plugins/releases/download/v1.4.1/cni-plugins-linux-amd64-v1.4.1.tgz
+https://github.com/projectcalico/calico/releases/download/v3.29.3/calicoctl-linux-amd64
+https://github.com/projectcalico/calico/archive/v3.29.3.tar.gz
+https://github.com/cilium/cilium-cli/releases/download/v0.18.3/cilium-linux-amd64.tar.gz
+https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.32.0/crictl-v1.32.0-linux-amd64.tar.gz
+https://storage.googleapis.com/cri-o/artifacts/cri-o.amd64.v1.32.0.tar.gz
+https://get.helm.sh/helm-v3.16.4-linux-amd64.tar.gz
+https://github.com/opencontainers/runc/releases/download/v1.2.6/runc.amd64
+https://github.com/containers/crun/releases/download/1.17/crun-1.17-linux-amd64
+https://github.com/youki-dev/youki/releases/download/v0.5.3/youki-0.5.3-x86_64-gnu.tar.gz
+https://github.com/kata-containers/kata-containers/releases/download/3.7.0/kata-static-3.7.0-amd64.tar.xz
+https://storage.googleapis.com/gvisor/releases/release/20250512.0/x86_64/runsc
+https://storage.googleapis.com/gvisor/releases/release/20250512.0/x86_64/containerd-shim-runsc-v1
+https://github.com/containerd/nerdctl/releases/download/v2.0.5/nerdctl-2.0.5-linux-amd64.tar.gz
+https://github.com/containerd/containerd/releases/download/v2.0.5/containerd-2.0.5-linux-amd64.tar.gz
+https://github.com/Mirantis/cri-dockerd/releases/download/v0.3.17/cri-dockerd-0.3.17.amd64.tgz
+https://github.com/lework/skopeo-binary/releases/download/v1.16.1/skopeo-linux-amd64
+https://github.com/mikefarah/yq/releases/download/v4.42.1/yq_linux_amd64
+https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml)
 
 ```
 
@@ -1460,7 +1482,7 @@ https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard
 ```text
 docker.io/mirantis/k8s-netchecker-server:v1.2.2
 docker.io/mirantis/k8s-netchecker-agent:v1.2.2
-quay.io/coreos/etcd:v3.5.21
+quay.io/coreos/etcd:v3.5.16
 quay.io/cilium/cilium:v1.17.3
 quay.io/cilium/operator:v1.17.3
 quay.io/cilium/hubble-relay:v1.17.3
@@ -1469,20 +1491,22 @@ quay.io/cilium/hubble-ui:v0.13.2
 quay.io/cilium/hubble-ui-backend:v0.13.2
 quay.io/cilium/cilium-envoy:v1.32.5-1744305768-f9ddca7dcd91f7ca25a505560e655c47d3dec2cf
 ghcr.io/k8snetworkplumbingwg/multus-cni:v4.1.0
-docker.io/flannel/flannel:v0.26.7
-docker.io/flannel/flannel-cni-plugin:v1.7.1-flannel1
-quay.io/calico/node:v3.29.4
-quay.io/calico/cni:v3.29.4
-quay.io/calico/kube-controllers:v3.29.4
-quay.io/calico/typha:v3.29.4
-quay.io/calico/apiserver:v3.29.4
+docker.io/flannel/flannel:v0.22.0
+docker.io/flannel/flannel-cni-plugin:v1.1.2
+quay.io/calico/node:v3.29.3
+quay.io/calico/cni:v3.29.3
+quay.io/calico/kube-controllers:v3.29.3
+quay.io/calico/typha:v3.29.3
+quay.io/calico/apiserver:v3.29.3
+docker.io/rajchaudhuri/weave-kube:2.8.7
+docker.io/rajchaudhuri/weave-npc:2.8.7
 docker.io/kubeovn/kube-ovn:v1.12.21
 docker.io/cloudnativelabs/kube-router:v2.1.1
 registry.k8s.io/pause:3.10
 ghcr.io/kube-vip/kube-vip:v0.8.9
-docker.io/library/nginx:1.28.0-alpine
-docker.io/library/haproxy:3.1.7-alpine
-registry.k8s.io/coredns/coredns:v1.12.0
+docker.io/library/nginx:1.27.4-alpine
+docker.io/library/haproxy:3.1.3-alpine
+registry.k8s.io/coredns/coredns:v1.11.3
 registry.k8s.io/dns/k8s-dns-node-cache:1.25.0
 registry.k8s.io/cpa/cluster-proportional-autoscaler:v1.8.8
 docker.io/library/registry:2.8.1
@@ -1506,10 +1530,10 @@ docker.io/kubernetesui/dashboard:v2.7.0
 docker.io/kubernetesui/metrics-scraper:v1.0.8
 quay.io/metallb/speaker:v0.13.9
 quay.io/metallb/controller:v0.13.9
-registry.k8s.io/kube-apiserver:v1.33.3
-registry.k8s.io/kube-controller-manager:v1.33.3
-registry.k8s.io/kube-scheduler:v1.33.3
-registry.k8s.io/kube-proxy:v1.33.3
+registry.k8s.io/kube-apiserver:v1.32.5
+registry.k8s.io/kube-controller-manager:v1.32.5
+registry.k8s.io/kube-scheduler:v1.32.5
+registry.k8s.io/kube-proxy:v1.32.5
 
 ```
 
