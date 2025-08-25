@@ -1,6 +1,6 @@
 
 # Air‑Gapped Kubernetes with Kubespray — Complete Instruction
-_Last updated: 2025-08-19 14:50:51 UTC_
+_Last updated: 2025-08-25 14:50:51 UTC_
 
 
 ## Introduction:
