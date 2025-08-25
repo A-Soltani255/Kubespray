@@ -289,7 +289,7 @@ tar cvfz pypi.tar.gz ./pip-req
 cd /opt/kubespray/contrib/offline
 ./generate_list.sh             # creates tmp/files.list and tmp/images.list files
 ```
-<a id="dowloader scripts list"></a>
+<a id="dowloader-scripts-list"></a>
 - [`./files.sh`](#download-files)                               # downloads all required binaries per files.list
 - [`./images.sh`](#download-images)                             # pulls & saves container images listed in images.list
 - [`./images-test.sh`](#download-left-over-images)              # optional validation of saved images and download the leftover images
@@ -1539,7 +1539,7 @@ registry.k8s.io/kube-proxy:v1.32.5
 
 ### E) Helper Scripts (verbatim)
 
-[↩ back to downloader scripts list](#gv-list)
+[↩ back to downloader scripts list](#dowloader-scripts-list)
 <a id="download-files"></a>
 #### `files.sh`
 ```bash
@@ -1573,7 +1573,7 @@ done < "${FILES_LIST}"
 tar -czvf "${OFFLINE_FILES_ARCHIVE}" "${OFFLINE_FILES_DIR_NAME}"
 
 ```
-[↩ back to downloader scripts list](#gv-list)
+[↩ back to downloader scripts list](#dowloader-scripts-list)
 <a id="download-images"></a>
 #### `images.sh`
 ```bash
@@ -1619,7 +1619,7 @@ done
 tar cvfz "${IMAGES_ARCHIVE}" "${IMAGES_DIR}"
 
 ```
-[↩ back to downloader scripts list](#gv-list)
+[↩ back to downloader scripts list](#dowloader-scripts-list)
 <a id="download-left-over-images"></a>
 #### `images-test.sh`
 ```bash
