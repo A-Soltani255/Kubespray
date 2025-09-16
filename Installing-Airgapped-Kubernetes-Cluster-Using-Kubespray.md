@@ -1582,7 +1582,7 @@ set -Eeuo pipefail
 
 NEXUS_REPO="192.168.10.1:4000/kubespray"   # registry/repo prefix
 CURRENT_DIR="/opt"
-IMAGES_LIST="${CURRENT_DIR}/images.list"
+IMAGES_LIST="${CURRENT_DIR}/kubespray-2.28.0/contrib/offline/temp/images.list"
 IMAGES_DIR="${CURRENT_DIR}/container-images"
 IMAGES_ARCHIVE="${CURRENT_DIR}/container-images.tar.gz"
 
