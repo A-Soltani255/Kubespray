@@ -1577,47 +1577,68 @@ tar -czvf "${OFFLINE_FILES_ARCHIVE}" "${OFFLINE_FILES_DIR_NAME}"
 <a id="download-images"></a>
 #### `images.sh`
 ```bash
-#!/bin/bash
+#!/usr/bin/env bash
+set -Eeuo pipefail
 
-NEXUS_REPO="192.168.10.1:4000/kubespray" # Update this with your Nexus repository IP and port
+NEXUS_REPO="192.168.10.1:4000/kubespray"   # registry/repo prefix
 CURRENT_DIR="/opt"
-IMAGES_ARCHIVE="${CURRENT_DIR}/container-images.tar.gz"
+IMAGES_LIST="${CURRENT_DIR}/images.list"
 IMAGES_DIR="${CURRENT_DIR}/container-images"
-IMAGES_LIST="${CURRENT_DIR}/kubespray/contrib/offline/tmp/images.list"
+IMAGES_ARCHIVE="${CURRENT_DIR}/container-images.tar.gz"
 
 # Ensure the images list exists
-if [ ! -f "${IMAGES_LIST}" ]; then
-    echo "${IMAGES_LIST} should exist, run ./generate_list.sh first."
-    exit 1
+if [[ ! -f "$IMAGES_LIST" ]]; then
+  echo "Missing $IMAGES_LIST – run ./generate_list.sh first." >&2
+  exit 1
 fi
 
-# Clean up previous images
-rm -f  "${IMAGE_TAR_FILE}"
-rm -rf "${IMAGE_DIR}"
-mkdir  "${IMAGE_DIR}"
+# Clean workspace
+rm -rf "$IMAGES_DIR"
+mkdir -p "$IMAGES_DIR"
+rm -f "$IMAGES_ARCHIVE"
 
-# Pull each image from the list
-while read -r image; do
-  if ! docker pull "${image}"; then
-    exit 1
+# Normalize list: strip CRLF, drop comments/blanks
+normalize() {
+  sed -e 's/\r$//' -e 's/#.*$//' -e '/^[[:space:]]*$/d'
+}
+
+# Pull, retag to your Nexus namespace, and save each as its own .tar.gz
+normalize < "$IMAGES_LIST" | while IFS= read -r image; do
+  echo "==> Pulling: $image"
+  docker pull "$image"
+
+  # Compute repo + tag safely (supports digest inputs too)
+  new_ref=""
+  if [[ "$image" == *@* ]]; then
+    # e.g., registry.k8s.io/pause@sha256:deadbeef...
+    base="${image%@*}"        # before @
+    digest="${image##*@}"     # after @
+    # turn digest into a tag-like suffix
+    tag="sha256-${digest#*:}"
+    new_ref="${NEXUS_REPO}/${base}:${tag}"
+  else
+    # e.g., registry.k8s.io/kube-apiserver:v1.29.0
+    base="${image%:*}"        # before last :
+    tag="${image##*:}"        # after last :
+    new_ref="${NEXUS_REPO}/${base}:${tag}"
   fi
-done < "${IMAGES_LIST}"
 
-IMAGES=$(docker images --format "{{.Repository}}:{{.Tag}}")
+  echo "==> Retagging -> $new_ref"
+  docker tag "$image" "$new_ref"  # ensure tag exists explicitly
 
-# Tag and save each image to a tar.gz file
-for i in $IMAGES;
-do
-  NEW_IMAGE=${NEXUS_REPO}/${i}
-  TAR_FILE=$(echo ${i} | sed 's/[\/:]/-/g')
-  docker tag $i ${NEW_IMAGE}
-  docker rmi $i
-  docker save ${NEW_IMAGE} | gzip > ${IMAGES_DIR}/${TAR_FILE}.tar.gz
+  # Save to gz
+  safe_name="$(printf '%s' "$new_ref" | sed 's#[/:@]#-#g')"
+  echo "==> Saving: $new_ref -> $IMAGES_DIR/${safe_name}.tar.gz"
+  docker save "$new_ref" | gzip > "$IMAGES_DIR/${safe_name}.tar.gz"
+
+  # Optional: drop the original tag (keeps layers if still referenced)
+  docker rmi "$image" || true
 done
 
-# Archive the saved images
-tar cvfz "${IMAGES_ARCHIVE}" "${IMAGES_DIR}"
+# Single archive (optional; else you can keep per-image tars)
+tar -cvzf "$IMAGES_ARCHIVE" -C "$IMAGES_DIR" .
 
+echo "Done. Per-image tars in $IMAGES_DIR, bundle at $IMAGES_ARCHIVE"
 ```
 [↩ back to downloader scripts list](#dowloader-scripts-list)
 <a id="download-left-over-images"></a>
