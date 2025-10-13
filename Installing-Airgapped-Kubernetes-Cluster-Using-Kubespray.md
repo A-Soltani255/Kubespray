@@ -457,53 +457,17 @@ EOF
 ```
 #### Notes
 
+- `master1`, `master2`, … are **hostnames** (Ansible inventory names).
+- `ansible_host` = the **SSH target address** Ansible uses to connect.
+- `ansible_port=22` = SSH port (22 is default; you can omit it if you use 22).
+- `ip` = the node’s **internal/node IP** that Kubernetes should use (node IP / advertise IP). This can equal ansible_host, but often differs in multi-NIC setups.
+- `etcd_member_name` = the **name of the etcd** peer for that master (used when forming the etcd cluster).
+
 - With Kubespray, the inventory builder will make only the first IP a control-plane + etcd node by default and put the rest as workers. If you want multiple masters, you just edit the generated inventory to add those hosts to the `kube_control_plane` (and usually `etcd`) groups. So you should open `inventory/mycluster/hosts.yaml` and put the extra masters under the `kube_control_plane` (and, typically, `etcd`) groups.
 - etcd size should be odd (1, 3, 5…). For HA, use 3 etcd members—often colocated on the 3 masters.
 - Masters are tainted by default (unschedulable); if you want them to run workloads, remove taints later.
 - For multi-master you need a stable API endpoint. Either provide an external load balancer (VIP/DNS) to front the masters, or enable a built-in option (e.g., kube-vip/HAProxy depending on your Kubespray version) in group vars. Set the control-plane endpoint to that VIP/DNS before deploying.
 
-
-**Example `inventory/mycluster/hosts.yaml`:**
-```yaml
-all:
-  hosts:
-    master1:
-      ansible_host: 192.168.154.134
-      ip: 192.168.154.134
-      access_ip: 192.168.154.134
-      ansible_user: root
-      ansible_python_interpreter: /usr/bin/python3
-    worker1:
-      ansible_host: 192.168.154.135
-      ip: 192.168.154.135
-      access_ip: 192.168.154.135
-      ansible_user: root
-      ansible_python_interpreter: /usr/bin/python3
-    worker2:
-      ansible_host: 192.168.154.136
-      ip: 192.168.154.136
-      access_ip: 192.168.154.136
-      ansible_user: root
-      ansible_python_interpreter: /usr/bin/python3
-  children:
-    kube_control_plane:
-      hosts:
-        master1: {}
-    kube_node:
-      hosts:
-        worker1: {}
-        worker2: {}
-    etcd:
-      hosts:
-        master1: {}
-    k8s_cluster:
-      children:
-        kube_control_plane: {}
-        kube_node: {}
-    calico_rr:
-      hosts: {}
-
-```
 
 <a id="gv-list"></a>
 Copy your prepared **group_vars** into place:
