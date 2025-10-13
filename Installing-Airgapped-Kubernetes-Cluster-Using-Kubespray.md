@@ -257,8 +257,7 @@ cd /opt/kubespray/contrib/offline
 - [`./images.sh`](#download-images)                             # pulls & saves container images listed in images.list
 - [`./images-test.sh`](#download-left-over-images)              # optional validation of saved images and download the leftover images
 
-> `images.sh` requires Docker running on the internet VM.
-> Keep in mind that the tag that is currently applied to the images is just an identifier, and in the future, each image will be pushed into its own private repository, depending on which repository it is for. So, we are not going to push all these images into a single repository after extracting them. Instead, we will re-tag them based on what the images start with after the X section. For example, if they start with docker.io or ghc.io, they will be given a different tag, which was previously mentioned, depending on which Nexus port each of these repositories includes. This way, they will be pushed into their own private repository.
+> `images.sh` requires Docker to be running on the internet-connected VM. Note that the tag currently applied to images by the `images.sh` script is only a temporary identifier. In the future, each image will be pushed to its own private repository, based on the registry it comes from. We will not push all images to a single repository after extracting them. Instead, we will retag them according to the registry prefix. For example, images that start with `docker.io` or `ghcr.io` will receive different tags (as described earlier), mapped to the appropriate Nexus port for each registry. This way, each image is pushed to its corresponding private repository.
 
 ### 2.5 Seed **Nexus** with YUM + Docker hosted registries (in the offline LAN)
 
@@ -328,17 +327,20 @@ cd /opt/kubespray/contrib/offline
      dnf update -y && dnf upgrade -y
      ```
 
-2) **Push container images to Docker (hosted) on Nexus**  
+2) **Push container images to Docker (hosted) repositories on Nexus**  
    - Install Docker **on Nexus** and allow HTTP for your hosted registry:
      ```bash
      dnf install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
      # Add to /usr/lib/systemcd/system/docker.service file on ExecStart section(drop-in file):
-     #   --insecure-registry=192.168.154.133:5000
+     #   --insecure-registry=192.168.154.133:5000 --insecure-registry=192.168.154.133:5001 --insecure-registry=192.168.154.133:5002 --insecure-registry=192.168.154.133:5003
      systemctl daemon-reload
      systemctl restart docker
 
      docker login 192.168.154.133:5000
+     docker login 192.168.154.133:5001
+     docker login 192.168.154.133:5002
+     docker login 192.168.154.133:5003
      ```
      <a id="load-retag-push"></a>
    - Load & retag & push:
@@ -378,10 +380,10 @@ echo $! > /var/run/offline-files-http.pid
 ```bash
 cd /srv
 tar xvzf offline-files.tar.gz
-mkdir files
-cp -r offline-files/* files
+mkdir raw
+cp -r offline-files/* raw
 
-/srv/files/
+/srv/raw/
   dl.k8s.io/release/v1.33.3/bin/linux/amd64/{kubeadm,kubelet,kubectl}
   get.helm.sh/helm-v3.18.4-linux-amd64.tar.gz
   github.com/containerd/containerd/releases/download/v2.1.3/containerd-2.1.3-linux-amd64.tar.gz
@@ -395,10 +397,10 @@ cp -r offline-files/* files
 
 FILES=$(find raw -type f)
 
-# Push the files to the repo named 'files' (replace the repo url with your values)
+# Push the files to the repository named raw (replace the repository URL with your own values), which is a **raw (hosted)** repository in Nexus Repository Manager.
 for i in $FILES do; curl -v --user 'admin:123' --upload-file $i http://192.168.154.133:8081/repository/${i}; done
 
-# files_repo => http://192.168.154.133:8081/repository/files
+# files_repo => http://192.168.154.133:8081/repository/raw
 
 ```
 ---
@@ -413,18 +415,45 @@ tar xvf kubespray.tar.gz
 dnf install -y python3.12 python3.12-pip
 alternatives --install /usr/bin/python3 python /usr/bin/python3.12 10
 alternatives --install /usr/bin/python3 python /usr/bin/python3.9 20
+alternatives --config python
+
+#   There are 2 programs which provide 'python'.
+#   
+#     Selection    Command
+#   -----------------------------------------------
+#      1           /usr/bin/python3.12
+#   *+ 2           /usr/bin/python3.9
+#
+#   Enter to keep the current selection[+], or type selection number: 1
 
 dnf install -y ansible
-python3.12 -m venv /opt/ks-venv
+python -m venv /opt/ks-venv
 source /opt/ks-venv/bin/activate
 python3.12 -m pip install --no-index --find-links /opt/pip-req -r /opt/kubespray/requirements.txt
 
 # Build the proper inventory using Kubespray's built-in inventory builder.
-cd /opt/kubespray
-mkdir -p inventory/mycluster
-declare -a IPS=(192.168.154.134 192.168.154.135 192.168.154.136)
-CONFIG_FILE=inventory/mycluster/hosts.yaml \\
-python3.12 -m pip contrib/inventory_builder/inventory.py "${{IPS[@]}}"
+cd /opt/kubespray/inventory
+cp -r sample ./mycluster
+cd mycluster
+cat <<EOF | sudo tee inventory.ini
+master1 ansible_host=192.168.154.131 ansible_port=22 ip=192.168.154.131 etcd_member_name=etcd1
+master2 ansible_host=192.168.154.132 ansible_port=22 ip=192.168.154.132 etcd_member_name=etcd2
+master3 ansible_host=192.168.154.134 ansible_port=22 ip=192.168.154.134 etcd_member_name=etcd3
+worker1 ansible_host=192.168.154.135 ansible_port=22 ip=192.168.154.135
+worker2 ansible_host=192.168.154.136 ansible_port=22 ip=192.168.154.136
+[kube_control_plane]
+master1
+master2
+master3
+
+[etcd:children]
+kube_control_plane
+
+[kube_node]
+worker1
+worker2
+
+EOF
 ```
 #### Notes
 
