@@ -130,21 +130,23 @@ With this foundation, you can move straight into the procedural sections and bui
 
 | Role      | Hostname  | IP              | Notes |
 |-----------|-----------|-----------------|-------|
-| master    | master1   | 192.168.154.134 | Single control-plane |
+| master    | master1   | 192.168.154.131 | |
+| master    | master2   | 192.168.154.132 | |
+| master    | master3   | 192.168.154.134 | |
 | worker    | worker1   | 192.168.154.135 | |
 | worker    | worker2   | 192.168.154.136 | |
 | kubespray | kubespray | 192.168.154.137 | Serves offline binaries over HTTP: `http://192.168.154.137:8080/` |
-| nexus     | nexus     | 192.168.154.133 | YUM + Docker hosted registry on `:5000` |
+| nexus     | nexus     | 192.168.154.133 | YUM + Docker hosted registry on `:5000 :5001 :5002 :5003` |
 
 **Mirrors (namespaces exist on Nexus):**
-- `192.168.154.133:5000/kubespray/docker.io`
-- `192.168.154.133:5000/kubespray/ghcr.io`
-- `192.168.154.133:5000/kubespray/quay.io`
-- `192.168.154.133:5000/kubespray/registry.k8s.io`
+- docker.io `192.168.154.133:5000`
+- registry.k8s.io `192.168.154.133:5001`
+- quay.io `192.168.154.133:5002`
+- ghcr.io `192.168.154.133:5003`
 
 ##### ***CRI:*** containerd (with nerdctl & ctr)
-##### ***CNI:*** Calico (KDD CRDs)
-##### ***Kubernetes version:*** 1.33.3
+##### ***CNI:*** Cilium (KDD CRDs)
+##### ***Kubernetes version:*** 1.32.5
 ##### ***Kubespray version:*** 2.28.0
 
 ---
@@ -153,24 +155,12 @@ With this foundation, you can move straight into the procedural sections and bui
 
 1. **Rocky 9 minimal** install, static IPs as above; correct DNS resolvers.
 2. **Time sync:** enable `chronyd` or `systemd-timesyncd`.
-3. **Swap off** and masked (Kubespray also handles it, but verify):  
-   ```bash
-   sudo swapoff -a
-   sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
-   ```
-4. **SELinux** Permissive mode is fine, but I suggest disabling it on the first try to implement this scenario. Kubespray will adjust the policies. If custom hardening is present, ensure that containerd can run.
-
-   ```bash
-   setenforce 0
-   sed -i 's/^SELINUX=enforcing$/SELINUX=disabled/' /etc/selinux/config
-   
-   reboot
-   ```
-
-5. **Firewall:** allow intra-cluster traffic or temporarily disable it during bootstrap. This typically requires the cluster nodes and their CIDR IP ranges.
+3. **Firewall:** allow intra-cluster traffic or temporarily disable it during bootstrap. This typically requires the cluster nodes and their CIDR IP ranges.
 
    ```bash
    # Accept only cluster nodes
+   firewall-cmd --zone=trusted --add-source=192.168.154.131 --permanent
+   firewall-cmd --zone=trusted --add-source=192.168.154.132 --permanent
    firewall-cmd --zone=trusted --add-source=192.168.154.134 --permanent
    firewall-cmd --zone=trusted --add-source=192.168.154.135 --permanent
    firewall-cmd --zone=trusted --add-source=192.168.154.136 --permanent
@@ -192,42 +182,15 @@ OR
    systemctl disable firewalld && systemctl stop firewalld
    ```
 
-6. **Kernel modules / sysctls** (Kubespray configures, but sanity check):  
-   ```bash
-   cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
-   br_netfilter
-   overlay
-   nf_conntrack
-   ip_tables
-   ip6_tables
-   bridge
-   nf_nat
-   ip_vti
-   x_tables
-   EOF
-   ```
-
-   ```bash
-   for module in br_netfilter overlay nf_conntrack ip_tables ip6_tables bridge nf_nat ip_vti x_tables; do modprobe $module; done
-   ```
-
-   ```bash
-   cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
-   net.ipv6.conf.all.forwarding = 1
-   net.ipv4.ip_forward = 1
-   net.bridge.bridge-nf-call-ip6tables = 1
-   net.bridge.bridge-nf-call-iptables = 1
-   EOF
-
-   sysctl --system
-   ```
-7. **/etc/hosts** (optional, but helpful): map hostnames ↔ IPs.
+4. **/etc/hosts** (optional, but helpful): map hostnames ↔ IPs.
 
    ```bash
    cat <<EOF | sudo tee /etc/hosts
    127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
    ::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
-   192.168.154.134 master1
+   192.168.154.131 master1
+   192.168.154.132 master2
+   192.168.154.134 master3
    192.168.154.135 worker1
    192.168.154.136 worker2
    192.168.154.133 nexus
@@ -239,9 +202,9 @@ OR
 ```bash
 # On 192.168.154.137 (kubespray VM)
 ssh-keygen -t ed25519 -N '' -f ~/.ssh/id_ed25519
-for h in master1 worker1 worker2; do ssh-copy-id root@$h; done
+for h in master1 master2 master3 worker1 worker2; do ssh-copy-id root@$h; done
 # quick check:
-ansible all -i "master1,worker1,worker2," -m ping -u root
+ansible all -i "master1,master2,master3,worker1,worker2," -m ping -u root
 ```
 ---
 
@@ -287,7 +250,7 @@ tar cvfz pypi.tar.gz ./pip-req
 ### 2.4 Generate offline lists from Kubespray and download everything
 ```bash
 cd /opt/kubespray/contrib/offline
-./generate_list.sh             # creates tmp/files.list and tmp/images.list files
+./generate_list.sh             # creates ./tmp/files.list and ./tmp/images.list files
 ```
 <a id="dowloader-scripts-list"></a>
 - [`./files.sh`](#download-files)                               # downloads all required binaries per files.list
@@ -295,6 +258,7 @@ cd /opt/kubespray/contrib/offline
 - [`./images-test.sh`](#download-left-over-images)              # optional validation of saved images and download the leftover images
 
 > `images.sh` requires Docker running on the internet VM.
+> Keep in mind that the tag that is currently applied to the images is just an identifier, and in the future, each image will be pushed into its own private repository, depending on which repository it is for. So, we are not going to push all these images into a single repository after extracting them. Instead, we will re-tag them based on what the images start with after the X section. For example, if they start with docker.io or ghc.io, they will be given a different tag, which was previously mentioned, depending on which Nexus port each of these repositories includes. This way, they will be pushed into their own private repository.
 
 ### 2.5 Seed **Nexus** with YUM + Docker hosted registries (in the offline LAN)
 
