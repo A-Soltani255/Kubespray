@@ -136,6 +136,7 @@ With this foundation, you can move straight into the procedural sections and bui
 | worker    | worker1   | 192.168.154.135 | |
 | worker    | worker2   | 192.168.154.136 | |
 | kubespray | kubespray | 192.168.154.137 | Serves offline binaries over HTTP: `http://192.168.154.137:8080/` |
+| haproxy   | haproxy   | 192.168.154.137 | Forward requests on port 6443 to port 6443 on the master nodes, and requests on ports 443 and 80 to ports 30081 and 30080 on the worker nodes, respectively. |
 | nexus     | nexus     | 192.168.154.133 | YUM + Docker hosted registry on `:5000 :5001 :5002 :5003` |
 
 **Mirrors (namespaces exist on Nexus):**
@@ -164,6 +165,7 @@ With this foundation, you can move straight into the procedural sections and bui
    firewall-cmd --zone=trusted --add-source=192.168.154.134 --permanent
    firewall-cmd --zone=trusted --add-source=192.168.154.135 --permanent
    firewall-cmd --zone=trusted --add-source=192.168.154.136 --permanent
+   firewall-cmd --zone=trusted --add-source=192.168.154.137 --permanent
 
    # Accept only cluster CIDRs (replace with your values)
    firewall-cmd --zone=trusted --add-source=10.233.64.0/18 --permanent
@@ -197,7 +199,7 @@ OR
    192.168.154.137 kubespray
    EOF
    ```
-9. **Passwordless SSH** from the Kubespray node to all cluster nodes (root or a sudoer).
+5. **Passwordless SSH** from the Kubespray node to all cluster nodes (root or a sudoer).
 
 ```bash
 # On 192.168.154.137 (kubespray VM)
@@ -337,10 +339,7 @@ cd /opt/kubespray/contrib/offline
      systemctl daemon-reload
      systemctl restart docker
 
-     docker login 192.168.154.133:5000
-     docker login 192.168.154.133:5001
-     docker login 192.168.154.133:5002
-     docker login 192.168.154.133:5003
+     for h in 5000 5001 5002 5003; do docker login 192.168.154.133:$h; done
      ```
      <a id="load-retag-push"></a>
    - Load & retag & push:
