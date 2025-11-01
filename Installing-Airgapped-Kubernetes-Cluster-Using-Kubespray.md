@@ -75,7 +75,7 @@ Kubespray is a mature, upstream-maintained collection of Ansible playbooks and r
 ### Scope, assumptions, and success criteria
 
 #### In scope
-- Single-control-plane cluster (master1) with etcd collocated.
+- Three control planes (etcd on all three) fronted by HAProxy at 192.168.154.137:6443.
 - Two worker nodes.
 - Air-gapped build using Nexus (YUM + Docker hosted).
 - `containerd` runtime with pull-through mirrors configured for HTTP on `192.168.154.133:5000`.
@@ -88,7 +88,7 @@ Kubespray is a mature, upstream-maintained collection of Ansible playbooks and r
 - Adequate firewall allowances inside the cluster; external ingress/egress is not covered here.
 
 #### Success looks like
-- `kubectl get nodes` shows master1/worker1/worker2 Ready.
+- `kubectl get nodes` shows master1/master2/master3/worker1/worker2 Ready.
 - Only core Pods are running in `kube-system` (apiserver, scheduler, controller-manager, etcd, kube-proxy, CoreDNS, Cilium).
 - `nerdctl -n k8s.io pull 192.168.154.133:5000/kubespray/registry.k8s.io/kube-apiserver:v1.32.5` succeeds from any node (HTTP mirror working).
 - No contacts to the public Internet; all pulls resolve via Nexus.
@@ -175,7 +175,7 @@ With this foundation, you can move straight into the procedural sections and bui
    firewall-cmd --reload
 
    #Verfy your 
-   firewall-cmd --liste-sources --zone=trusted
+   firewall-cmd --list-sources --zone=trusted
    ```
    
 OR
@@ -409,7 +409,7 @@ for i in $FILES do; curl -v --user 'admin:admin' --upload-file $i http://192.168
 On the Kubespray host:
 ```bash
 cd /opt
-tar xvf kubespray.tar.gz
+tar xvf kubespray-2.28.0.tar.gz
 
 dnf install -y python3.12 python3.12-pip
 alternatives --install /usr/bin/python3 python /usr/bin/python3.12 10
@@ -428,7 +428,7 @@ alternatives --config python
 dnf install -y ansible
 python -m venv /opt/ks-venv
 source /opt/ks-venv/bin/activate
-python3.12 -m pip install --no-index --find-links /opt/pip-req -r /opt/kubespray/requirements.txt
+python3.12 -m pip install --no-index --find-links /opt/pip-req -r /opt/kubespray-2.28.0/requirements.txt
 
 # Build the proper inventory using Kubespray's built-in inventory builder.
 cd /opt/kubespray/inventory
@@ -462,7 +462,7 @@ EOF
 - `ip` = the node’s **internal/node IP** that Kubernetes should use (node IP / advertise IP). This can equal ansible_host, but often differs in multi-NIC setups.
 - `etcd_member_name` = the **name of the etcd** peer for that master (used when forming the etcd cluster).
 
-- With Kubespray, the inventory builder will make only the first IP a control-plane + etcd node by default and put the rest as workers. If you want multiple masters, you just edit the generated inventory to add those hosts to the `kube_control_plane` (and usually `etcd`) groups. So you should open `inventory/mycluster/hosts.yaml` and put the extra masters under the `kube_control_plane` (and, typically, `etcd`) groups.
+- With Kubespray, the inventory builder will make only the first IP a control-plane + etcd node by default and put the rest as workers. If you want multiple masters, you just edit the generated inventory to add those hosts to the `kube_control_plane` (and usually `etcd`) groups. So you should open `inventory/mycluster/inventory.ini` and put the extra masters under the `kube_control_plane` (and, typically, `etcd`) groups.
 - etcd size should be odd (1, 3, 5…). For HA, use 3 etcd members—often colocated on the 3 masters.
 - Masters are tainted by default (unschedulable); if you want them to run workloads, remove taints later.
 - For multi-master you need a stable API endpoint. Either provide an external load balancer (VIP/DNS) to front the masters, or enable a built-in option (e.g., kube-vip/HAProxy depending on your Kubespray version) in group vars. Set the control-plane endpoint to that VIP/DNS before deploying.
@@ -485,7 +485,7 @@ Copy your prepared **group_vars** into place:
 
 Run the deployment:
 ```bash
-ansible-playbook -i inventory/mycluster/hosts.yaml -b cluster.yml -vv
+ansible-playbook -i inventory/mycluster/inventory.ini -b cluster.yml -vv
 ```
 
 If everything completes successfully, the output should look like the following—no failures.
@@ -540,7 +540,7 @@ We use Kubespray variables to generate containerd configs and **hosts.toml** per
 systemctl status containerd
 ls -1 /etc/containerd/certs.d/
 cat /etc/containerd/certs.d/registry.k8s.io/hosts.toml
-nerdctl -n k8s.io pull 192.168.154.133:5000/kubespray/registry.k8s.io/kube-apiserver:v1.32.5
+nerdctl -n k8s.io pull 192.168.154.133:5001/registry.k8s.io/kube-apiserver:v1.32.5
 ctr -n k8s.io images ls | grep kube-apiserver
 ```
 
@@ -626,13 +626,15 @@ Expected pods (steady state): apiserver/scheduler/controller-manager on masters;
 
 <a id="gv-offline"></a>
 [↩ back to YMLs list](#gv-list)
-### A) `inventory/mycluster/group_vars/offline.yml`
+### A) `inventory/mycluster/group_vars/all/offline.yml`
 ```yaml
 ---
 ## Global Offline settings
 ### Private Container Image Registry
 # registry_host: "myprivateregisry.com"
-files_repo: "http://192.168.59.29:8081/repository/raw/"
+# === Offline root if served by your mini HTTP server ===> files_repo: "http://192.168.154.137:8080"
+# === Offline root served by your raw (hosted) repository ===
+files_repo: "http://192.168.154.133:8081/repository/files"
 ### If using CentOS, RedHat, AlmaLinux or Fedora
 # yum_repo: "http://myinternalyumrepo"
 ### If using Debian
@@ -1042,7 +1044,7 @@ supplementary_addresses_in_ssl_keys:
   - master1
   - master2
   - master3
-  - 192.168.154.137  # kubesoray IP
+  - 192.168.154.137  # kubespray IP
   - 192.168.154.131  # master1 IP
   - 192.168.154.132  # master2 IP
   - 192.168.154.134  # master3 IP
@@ -1398,7 +1400,7 @@ set -Eeuo pipefail
 
 NEXUS_REPO="192.168.10.1:4000/kubespray"   # registry/repo prefix
 CURRENT_DIR="/opt"
-IMAGES_LIST="${CURRENT_DIR}/kubespray-2.28.0/contrib/offline/temp/images.list"
+IMAGES_LIST="${CURRENT_DIR}/kubespray-2.28.0/contrib/offline/tmp/images.list"
 IMAGES_DIR="${CURRENT_DIR}/container-images"
 IMAGES_ARCHIVE="${CURRENT_DIR}/container-images.tar.gz"
 
@@ -1460,7 +1462,7 @@ echo "Done. Per-image tars in $IMAGES_DIR, bundle at $IMAGES_ARCHIVE"
 <a id="download-left-over-images"></a>
 #### `images-test.sh`
 ```bash
-NEXUS_REPO="172.20.117.211:7051/kubespray"
+NEXUS_REPO="192.168.10.1:4000/kubespray"
 IMAGES_LIST="/opt/kubespray/images.list"
 OUT="/opt/missing_images.txt"
 
@@ -1490,7 +1492,7 @@ echo "Missing: ${#missing[@]}   (saved to $OUT)"
 ## ========================
 ## CONFIGURATION
 ## ========================
-NEXUS_URL="http://192.168.154.133:8081/repository/local/"   # no trailing slash
+NEXUS_URL="http://192.168.154.133:8081/repository/local"   # no trailing slash
 NEXUS_USER="admin"
 NEXUS_PASS="admin"
 
@@ -1588,7 +1590,7 @@ set -euo pipefail
 
 # ---- config ----
 IMAGES_DIR="${1:-/opt/container-images}"          # directory of *.tar or *.tar.gz
-SRC_HUB="192.168.10.1:4000"                       # where they were originally tagged from
+SRC_HUB="192.168.154.133:4000"                       # where they were originally tagged from
 SRC_NS="kubespray"                                # prefix after SRC_HUB (present in your names)
 CLI="${CLI:-docker}"                              # use 'docker' (default) or set CLI=nerdctl
 PUSH="${PUSH:-1}"                                 # set PUSH=1 to push after retag
