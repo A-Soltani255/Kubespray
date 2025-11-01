@@ -4,7 +4,7 @@ _Last updated: 2025-08-25 14:50:51 UTC_
 
 
 ## Introduction:
-This document documents—end-to-end—how to build and operate a Kubernetes 1.33.3 cluster on Rocky Linux 9 in a fully air-gapped (offline) environment using Kubespray and Sonatype Nexus. It is written from a real, working deployment and includes all practical details you need to reproduce the outcome: mirroring RPMs and container images, staging Kubernetes binaries, teaching containerd to use your HTTP registry mirrors, pinning versions, disabling non-essential add-ons, and validating the final cluster.
+This document documents—end-to-end—how to build and operate a Kubernetes 1.32.5 cluster on Rocky Linux 9 in a fully air-gapped (offline) environment using Kubespray and Sonatype Nexus. It is written from a real, working deployment and includes all practical details you need to reproduce the outcome: mirroring RPMs and container images, staging Kubernetes binaries, teaching containerd to use your HTTP registry mirrors, pinning versions, disabling non-essential add-ons, and validating the final cluster.
 
 The environment used throughout:
 - Control planes: master1 (`192.168.154.131`) master2 (`192.168.154.132`) master3 (`192.168.154.134`)
@@ -16,15 +16,15 @@ The environment used throughout:
 >- Air-gapped: reduces supply-chain risk, satisfies compliance, and guarantees repeatable builds by eliminating “latest from the Internet”.
 >- Kubespray: declarative, idempotent, and inventory-driven automation built on Ansible; easier to audit than ad-hoc kubeadm scripts.
 >- containerd (+ nerdctl/ctr): the CNCF-blessed container runtime with clear, file-driven mirror and auth configuration.
->- Calico (KDD mode): mature, simple underlay/overlay networking; no external datastore; offline artifacts are small and easy to mirror.
->- Core components only: apiserver, controller-manager, scheduler, etcd, kube-proxy, CoreDNS, Calico node/controllers. We explicitly disable nginx-proxy, dns-autoscaler, metrics-server, Helm, etc., for a minimal, production-friendly baseline.
+>- Cilium (KDD mode): mature, simple underlay/overlay networking; no external datastore; offline artifacts are small and easy to mirror.
+>- Core components only: apiserver, controller-manager, scheduler, etcd, kube-proxy, CoreDNS, Cilium node/controllers. We explicitly disable nginx-proxy, dns-autoscaler, metrics-server, Helm, etc., for a minimal, production-friendly baseline.
 
 ### What you will do (nature of the work)
 
 #### 1. Prepare artifacts online (once, on an Internet-connected Rocky 9 box):
 - Mirror OS RPMs (BaseOS/AppStream/EPEL/Docker CE) with reposync and archive them.
 - Clone Kubespray, pre-download pip wheels for offline installs, and generate lists of required Kubernetes binaries and container images using contrib/offline.
-- Pull and save all container images and gather all binaries (kubeadm/kubelet/kubectl, containerd/runc/nerdctl, crictl, CNI, etcd, Helm, Calico).
+- Pull and save all container images and gather all binaries (kubeadm/kubelet/kubectl, containerd/runc/nerdctl, crictl, CNI, etcd, Helm, Cilium).
 #### 2. Seed Nexus in the offline LAN:
 - Load the archived RPMs into a YUM (hosted) repo (preserving repodata/).
 - Stand up a Docker (hosted) registry on `192.168.154.133:5000`, load all images, retag them under the required mirror namespaces, and push.
@@ -65,10 +65,10 @@ Kubespray is a mature, upstream-maintained collection of Ansible playbooks and r
 
 ### What this document gives you
 - A complete blueprint for your exact topology and IPs, including the Nexus layout you use `/kubespray/{docker.io,ghcr.io,quay.io,registry.k8s.io}`.
-- A locked set of versions (Kubernetes, containerd/runc, CNI, etcd, Helm, Calico) and the offline directory structure Kubespray expects.
+- A locked set of versions (Kubernetes, containerd/runc, CNI, etcd, Helm, Cilium) and the offline directory structure Kubespray expects.
 - Explicit containerd configuration to use HTTP mirrors and, if needed, Basic Auth, with examples of the rendered `hosts.toml` files.
-- Minimal add-ons (CoreDNS + Calico) and instructions to disable nginx-proxy and DNS autoscaler for a lean control plane.
-- Troubleshooting drawn from real errors (HTTPS vs HTTP pulls, duplicate “v” in versions, archive vs file copy, kubeadm template validation, Calico CRDs), with concrete fixes you can apply immediately.
+- Minimal add-ons (CoreDNS + Cilium) and instructions to disable nginx-proxy and DNS autoscaler for a lean control plane.
+- Troubleshooting drawn from real errors (HTTPS vs HTTP pulls, duplicate “v” in versions, archive vs file copy, kubeadm template validation, Cilium CRDs), with concrete fixes you can apply immediately.
 - Verification and Day-2 guidance (node lifecycle, etcd backups, image checks, DNS sanity tests).
 
 
@@ -79,7 +79,7 @@ Kubespray is a mature, upstream-maintained collection of Ansible playbooks and r
 - Two worker nodes.
 - Air-gapped build using Nexus (YUM + Docker hosted).
 - `containerd` runtime with pull-through mirrors configured for HTTP on `192.168.154.133:5000`.
-- Calico networking (KDD), CoreDNS, kube-proxy; no nginx-proxy, no dns-autoscaler, no metrics-server, no Helm.
+- Cilium networking , CoreDNS, kube-proxy; no nginx-proxy, no dns-autoscaler, no metrics-server, no Helm.
 
 #### Assumptions
 - All nodes run Rocky 9; SELinux disabled (Kubespray manages policies).
@@ -89,8 +89,8 @@ Kubespray is a mature, upstream-maintained collection of Ansible playbooks and r
 
 #### Success looks like
 - `kubectl get nodes` shows master1/worker1/worker2 Ready.
-- Only core Pods are running in `kube-system` (apiserver, scheduler, controller-manager, etcd, kube-proxy, CoreDNS, Calico).
-- `nerdctl -n k8s.io pull 192.168.154.133:5000/kubespray/registry.k8s.io/kube-apiserver:v1.33.3` succeeds from any node (HTTP mirror working).
+- Only core Pods are running in `kube-system` (apiserver, scheduler, controller-manager, etcd, kube-proxy, CoreDNS, Cilium).
+- `nerdctl -n k8s.io pull 192.168.154.133:5000/kubespray/registry.k8s.io/kube-apiserver:v1.32.5` succeeds from any node (HTTP mirror working).
 - No contacts to the public Internet; all pulls resolve via Nexus.
 
 ### Risks, trade-offs, and how this guide mitigates them
@@ -119,7 +119,7 @@ Mitigation: Kubespray enforces the needed modules and sysctls; the document list
 - ***Nexus (hosted):*** Private repositories you populate yourself (RPMs and Docker).
 - ***Kubespray:*** Ansible roles/playbooks for upstream Kubernetes deployments.
 - ***containerd:*** Container runtime; pulls images using hosts.toml mirror rules.
-- ***CRDs:*** CustomResourceDefinitions; Calico’s KDD manifests are applied as part of networking setup.
+- ***CRDs:*** CustomResourceDefinitions; cilium-agent (DaemonSet) and cilium-operator manifests are applied as part of networking setup.
 - ***Idempotent:*** Safe to re-apply; converges without unintended side effects.
 
 With this foundation, you can move straight into the procedural sections and build the cluster confidently, knowing what is happening, why it’s needed in an air-gapped context, and how to verify each step.
@@ -357,7 +357,7 @@ cd /srv
 tar xvzf offline-files.tar.gz
 
 /srv/offline-files/
-  dl.k8s.io/release/v1.33.3/bin/linux/amd64/{kubeadm,kubelet,kubectl}
+  dl.k8s.io/release/v1.32.5/bin/linux/amd64/{kubeadm,kubelet,kubectl}
   get.helm.sh/helm-v3.18.4-linux-amd64.tar.gz
   github.com/containerd/containerd/releases/download/v2.1.3/containerd-2.1.3-linux-amd64.tar.gz
   github.com/opencontainers/runc/releases/download/v1.3.0/runc.amd64
@@ -383,7 +383,7 @@ mkdir raw
 cp -r offline-files/* raw
 
 /srv/raw/
-  dl.k8s.io/release/v1.33.3/bin/linux/amd64/{kubeadm,kubelet,kubectl}
+  dl.k8s.io/release/v1.32.5/bin/linux/amd64/{kubeadm,kubelet,kubectl}
   get.helm.sh/helm-v3.18.4-linux-amd64.tar.gz
   github.com/containerd/containerd/releases/download/v2.1.3/containerd-2.1.3-linux-amd64.tar.gz
   github.com/opencontainers/runc/releases/download/v1.3.0/runc.amd64
@@ -397,7 +397,7 @@ cp -r offline-files/* raw
 FILES=$(find raw -type f)
 
 # Push the files to the repository named raw (replace the repository URL with your own values), which is a **raw (hosted)** repository in Nexus Repository Manager.
-for i in $FILES do; curl -v --user 'admin:123' --upload-file $i http://192.168.154.133:8081/repository/${i}; done
+for i in $FILES do; curl -v --user 'admin:admin' --upload-file $i http://192.168.154.133:8081/repository/${i}; done
 
 # files_repo => http://192.168.154.133:8081/repository/raw
 
@@ -515,8 +515,8 @@ container-engine/validate-container-engine : Populate service facts ------------
 /opt/kubespray/roles/container-engine/validate-container-engine/tasks/main.yml:25 -----------------------------------------------------------------------------------------------------------------------------------------------------
 kubernetes/node : Install | Copy kubelet binary from download dir --------------------------------------------------------------------------------------------------------------------------------------------------------------- 4.06s
 /opt/kubespray/roles/kubernetes/node/tasks/install.yml:13 -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-network_plugin/calico : Calico | Create calico manifests ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ 3.68s
-/opt/kubespray/roles/network_plugin/calico/tasks/install.yml:382 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+network_plugin/cilium : Cilium | Create cilium manifests ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ 3.68s
+/opt/kubespray/roles/network_plugin/cilium/tasks/install.yml:382 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 download : Download_file | Download item ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- 3.19s
 /opt/kubespray/roles/download/tasks/download_file.yml:59 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 container-engine/crictl : Extract_file | Unpacking archive ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- 3.06s
@@ -540,7 +540,7 @@ We use Kubespray variables to generate containerd configs and **hosts.toml** per
 systemctl status containerd
 ls -1 /etc/containerd/certs.d/
 cat /etc/containerd/certs.d/registry.k8s.io/hosts.toml
-nerdctl -n k8s.io pull 192.168.154.133:5000/kubespray/registry.k8s.io/kube-apiserver:v1.33.3
+nerdctl -n k8s.io pull 192.168.154.133:5000/kubespray/registry.k8s.io/kube-apiserver:v1.32.5
 ctr -n k8s.io images ls | grep kube-apiserver
 ```
 
@@ -550,7 +550,7 @@ If you see `server ... does not seem to support HTTPS`, a host file is pointing 
 
 ## 6) Minimal Add‑ons Only (no nginx‑proxy, no dns‑autoscaler, etc.)
 
-We keep only **kube‑apiserver, kube‑scheduler, kube‑controller‑manager, etcd, kube‑proxy, coredns, calico‑node/controllers**.
+We keep only **kube‑apiserver, kube‑scheduler, kube‑controller‑manager, etcd, kube‑proxy, coredns, cilium-agent (DaemonSet) and cilium-operator**.
 
 In `k8s-cluster.yml`:
 ```yaml
@@ -587,8 +587,8 @@ kubectl -n kube-system delete deploy -l k8s-app=dns-autoscaler --ignore-not-foun
 - **kubeadm template validation error**
   - If you see `host '' must be a valid IP...`, unset any unused LB domain and set `kube_apiserver_bind_address` (or keep Kubespray defaults).
 
-- **Calico KDD CRDs missing**
-  - Ensure `calico_crds_download_url` points at the Calico tarball and the role extracts to a path Kubespray expects (we provide mapping in offline.yml).
+- **Cilium images/manifest not mirrored**
+  - Ensure `cilium_crds_download_url` points at the Ciliuum tarball and the role extracts to a path Kubespray expects (we provide mapping in offline.yml).
 
 - **Images fail to pull during bootstrap**
   - Test first with nerdctl: `nerdctl -n k8s.io pull <your-mirror>/<image>:<tag>`.
@@ -600,7 +600,7 @@ kubectl -n kube-system delete deploy -l k8s-app=dns-autoscaler --ignore-not-foun
 ```bash
 kubectl get nodes -o wide
 kubectl -n kube-system get pods -o wide
-kubectl -n kube-system get ds,deploy | awk 'NR==1 || /calico|coredns|kube-/'
+kubectl -n kube-system get ds,deploy | awk 'NR==1 || /cilium|coredns|kube-/'
 # Container runtime
 crictl info | head
 ctr -n k8s.io images ls | head
@@ -609,7 +609,7 @@ kubectl -n kube-system get svc kube-dns
 kubectl run -it --rm --image=busybox:1.36 --restart=Never dns-test -- nslookup kubernetes.default
 ```
 
-Expected pods (steady state): apiserver/scheduler/controller-manager on master1; etcd on master1; coredns (2 replicas by default); calico-node on each node; kube-proxy on each node; calico-kube-controllers.
+Expected pods (steady state): apiserver/scheduler/controller-manager on masters; etcd on masters; coredns (2 replicas by default); cilium-node on each node; kube-proxy on each node; cilium-operator.
 
 ---
 
@@ -629,278 +629,124 @@ Expected pods (steady state): apiserver/scheduler/controller-manager on master1;
 ### A) `inventory/mycluster/group_vars/offline.yml`
 ```yaml
 ---
-# === Offline root if served by your mini HTTP server ===> files_repo: "http://192.168.154.137:8080"
+## Global Offline settings
+### Private Container Image Registry
+# registry_host: "myprivateregisry.com"
+files_repo: "http://192.168.59.29:8081/repository/raw/"
+### If using CentOS, RedHat, AlmaLinux or Fedora
+# yum_repo: "http://myinternalyumrepo"
+### If using Debian
+# debian_repo: "http://myinternaldebianrepo"
+### If using Ubuntu
+# ubuntu_repo: "http://myinternalubunturepo"
 
-# === Offline root served by your raw (hosted) repository ===
+## Container Registry overrides
+# kube_image_repo: "{{ registry_host }}"
+# gcr_image_repo: "{{ registry_host }}"
+# github_image_repo: "{{ registry_host }}"
+# docker_image_repo: "{{ registry_host }}"
+# quay_image_repo: "{{ registry_host }}"
 
-files_repo: "http://192.168.154.133:8081/repository/files"
-
-# === Common ===
-image_arch: "amd64"
-kube_version: "1.33.3"       # no leading v (Kubespray compares this)
-local_release_dir: "/tmp/releases"
-download_cache_dir: "/tmp/kubespray_cache"
-download_run_once: false
-
-# who to delegate run_once downloads to (safe default)
-download_delegate: "{{ groups['kube_control_plane'][0] | default(inventory_hostname) }}"
-
-# Default for any download that doesn't override (crucial: groups!)
-download_defaults:
-  enabled: true
-  groups:
-    - kube_control_plane
-    - kube_node
-
-# === Versions (exactly what you mirrored) ===
-containerd_version: "2.1.3"
-nerdctl_version: "2.1.2"
-runc_version: "1.3.0"
-crictl_version: "v1.33.0"    # keep the 'v' – your tarball has it
-cni_version: "v1.4.1"        # includes 'v' in file name
-etcd_version: "3.5.21"       # no 'v' for comparisons
-helm_version: "v3.18.4"      # includes 'v' in file name
-calico_version: "3.29.4"     # no 'v' for comparisons
-
-# === Filenames we’ll reference in dest paths ===
-runc_binary: "runc.{{ image_arch }}"
-crictl_filename: "crictl-{{ crictl_version }}-linux-{{ image_arch }}.tar.gz"
-containerd_filename: "containerd-{{ containerd_version }}-linux-{{ image_arch }}.tar.gz"
-nerdctl_filename: "nerdctl-{{ nerdctl_version }}-linux-{{ image_arch }}.tar.gz"
-cni_filename: "cni-plugins-linux-{{ image_arch }}-{{ cni_version }}.tgz"
-etcd_filename: "etcd-v{{ etcd_version }}-linux-{{ image_arch }}.tar.gz"
-helm_filename: "helm-{{ helm_version }}-linux-{{ image_arch }}.tar.gz"
-calicoctl_binary: "calicoctl-linux-{{ image_arch }}"
-calico_crds_filename: "v{{ calico_version }}.tar.gz"
-
-# === URLs that match your /srv/offline-files tree ===
-kubeadm_download_url:  "{{ files_repo }}/dl.k8s.io/release/v{{ kube_version }}/bin/linux/{{ image_arch }}/kubeadm"
-kubelet_download_url:  "{{ files_repo }}/dl.k8s.io/release/v{{ kube_version }}/bin/linux/{{ image_arch }}/kubelet"
-kubectl_download_url:  "{{ files_repo }}/dl.k8s.io/release/v{{ kube_version }}/bin/linux/{{ image_arch }}/kubectl"
-
-containerd_download_url:  "{{ files_repo }}/github.com/containerd/containerd/releases/download/v{{ containerd_version }}/{{ containerd_filename }}"
-nerdctl_download_url:     "{{ files_repo }}/github.com/containerd/nerdctl/releases/download/v{{ nerdctl_version }}/{{ nerdctl_filename }}"
-runc_download_url:        "{{ files_repo }}/github.com/opencontainers/runc/releases/download/v{{ runc_version }}/{{ runc_binary }}"
-crictl_download_url:      "{{ files_repo }}/github.com/kubernetes-sigs/cri-tools/releases/download/{{ crictl_version }}/{{ crictl_filename }}"
-cni_download_url:         "{{ files_repo }}/github.com/containernetworking/plugins/releases/download/{{ cni_version }}/{{ cni_filename }}"
-etcd_download_url:        "{{ files_repo }}/github.com/etcd-io/etcd/releases/download/v{{ etcd_version }}/{{ etcd_filename }}"
-helm_download_url:        "{{ files_repo }}/get.helm.sh/{{ helm_filename }}"
-calicoctl_download_url:   "{{ files_repo }}/github.com/projectcalico/calico/releases/download/v{{ calico_version }}/{{ calicoctl_binary }}"
-calico_crds_download_url: "{{ files_repo }}/github.com/projectcalico/calico/archive/{{ calico_crds_filename }}"
-
-# === Checksums (fill the placeholders; keep the sha256: prefix) ===
-
-# compute these and paste (see quick commands below)
-kubeadm_checksum:  "sha256:baaa1f7621c9c239cd4ac3be5b7e427df329d7e1e15430db5f6ea5bb7a15a02b"
-kubelet_checksum:  "sha256:37f9093ed2b4669cccf5474718e43ec412833e1267c84b01e662df2c4e5d7aaa"
-kubectl_checksum:  "sha256:2fcf65c64f352742dc253a25a7c95617c2aba79843d1b74e585c69fe4884afb0"
-
-containerd_checksum:  "sha256:436cc160c33b37ec25b89fb5c72fc879ab2b3416df5d7af240c3e9c2f4065d3c"
-nerdctl_checksum:     "sha256:1a08c35d16a0db0b4ac298adb8e4dab4293803d492cbba7aaf862a48a04c463d"
-runc_checksum:        "sha256:028986516ab5646370edce981df2d8e8a8d12188deaf837142a02097000ae2f2"
-crictl_checksum:      "sha256:8307399e714626e69d1213a4cd18c8dec3d0201ecdac009b1802115df8973f0f"
-cni_checksum:         "sha256:2a0ea7072d1806b8526489bcd3b4847a06ab010ee32ba3c3d4e5a3235d3eb138"
-etcd_checksum:        "sha256:adddda4b06718e68671ffabff2f8cee48488ba61ad82900e639d108f2148501c"
-helm_checksum:        "sha256:f8180838c23d7c7d797b208861fecb591d9ce1690d8704ed1e4cb8e2add966c1"
-calicoctl_checksum:   "sha256:f2a6da6e97052da3b8b787aaea61fa83298586e822af8b9ec5f3858859de759c"
-calico_crds_checksum: "sha256:6d2396fde36ba59ad55a92b5b66643adcc9ee13bb2b3986b1014e2f8f95fa861"
-
-# === Single consolidated downloads map (covers all roles/tags) ===
-downloads:
-  kubeadm:
-    enabled:  true
-    groups:   [kube_control_plane, kube_node]
-    container: false
-    url:      "{{ kubeadm_download_url }}"
-    dest:     "{{ local_release_dir }}/kubeadm-{{ kube_version }}-{{ image_arch }}"
-    mode:     "0755"
-    checksum: "{{ kubeadm_checksum }}"
-  kubelet:
-    enabled:  true
-    groups:   [kube_control_plane, kube_node]
-    container: false
-    url:      "{{ kubelet_download_url }}"
-    dest:     "{{ local_release_dir }}/kubelet-{{ kube_version }}-{{ image_arch }}"
-    mode:     "0755"
-    checksum: "{{ kubelet_checksum }}"
-  kubectl:
-    enabled:  true
-    groups:   [kube_control_plane, kube_node]
-    container: false
-    url:      "{{ kubectl_download_url }}"
-    dest:     "{{ local_release_dir }}/kubectl-{{ kube_version }}-{{ image_arch }}"
-    mode:     "0755"
-    checksum: "{{ kubectl_checksum }}"
-
-  containerd:
-    enabled:  true
-    groups:   [kube_control_plane, kube_node]
-    container: false
-    url:      "{{ containerd_download_url }}"
-    dest:     "{{ local_release_dir }}/{{ containerd_filename }}"
-    mode:     "0644"
-    checksum: "{{ containerd_checksum }}"
-    # leave unarchive to the containerd role
-
-  nerdctl:
-    enabled:  true
-    groups:   [kube_control_plane, kube_node]
-    container: false
-    url:      "{{ nerdctl_download_url }}"
-    dest:     "{{ local_release_dir }}/{{ nerdctl_filename }}"
-    mode:     "0644"
-    checksum: "{{ nerdctl_checksum }}"
-    unarchive: true
-    # the nerdctl role unpacks it via its own Extract_file task
-
-  runc:
-    enabled:  true
-    groups:   [kube_control_plane, kube_node]
-    container: false
-    url:      "{{ runc_download_url }}"
-    dest:     "{{ local_release_dir }}/{{ runc_binary }}"
-    mode:     "0755"
-    checksum: "{{ runc_checksum }}"
-
-  crictl:
-    enabled:  true
-    groups:   [kube_control_plane, kube_node]
-    container: false
-    url:      "{{ crictl_download_url }}"
-    dest:     "{{ local_release_dir }}/{{ crictl_filename }}"
-    mode:     "0644"
-    checksum: "{{ crictl_checksum }}"
-    unarchive: true   # crictl copy step expects /tmp/releases/crictl
-
-  cni:
-    enabled:  true
-    groups:   [kube_control_plane, kube_node]
-    container: false
-    url:      "{{ cni_download_url }}"
-    dest:     "{{ local_release_dir }}/{{ cni_filename }}"
-    mode:     "0644"
-    checksum: "{{ cni_checksum }}"
-    # CNI role handles extraction
-
-  etcd:
-    enabled:  true
-    groups:   [etcd, kube_control_plane]
-    container: false
-    url:      "{{ etcd_download_url }}"
-    dest:     "{{ local_release_dir }}/{{ etcd_filename }}"
-    mode:     "0644"
-    checksum: "{{ etcd_checksum }}"
-    unarchive: true
-    # etcdctl/etcdutl roles extract from this tarball
-
-  helm:
-    enabled:  true
-    groups:   [kube_control_plane]
-    container: false
-    url:      "{{ helm_download_url }}"
-    dest:     "{{ local_release_dir }}/{{ helm_filename }}"
-    mode:     "0644"
-    checksum: "{{ helm_checksum }}"
-    # Helm role handles extraction
-
-  calicoctl:
-    enabled:  true
-    groups:   [kube_control_plane, kube_node]
-    container: false
-    url:      "{{ calicoctl_download_url }}"
-    dest:     "{{ local_release_dir }}/{{ calicoctl_binary }}"
-    mode:     "0755"
-    checksum: "{{ calicoctl_checksum }}"
-
-  calico_crds:
-    enabled:  true
-    groups:   [kube_control_plane, kube_node]
-    container: false
-    url:      "{{ calico_crds_download_url }}"
-    dest:     "{{ local_release_dir }}/{{ calico_crds_filename }}"
-    mode:     "0644"
-    checksum: "{{ calico_crds_checksum }}"
-
-# --- Also provide the alternate shapes some Kubespray tags read ---
-kubeadm_download:     "{{ downloads.kubeadm }}"
-kubelet_download:     "{{ downloads.kubelet }}"
-kubectl_download:     "{{ downloads.kubectl }}"
-containerd_download:  "{{ downloads.containerd }}"
-nerdctl_download:     "{{ downloads.nerdctl }}"
-runc_download:        "{{ downloads.runc }}"
-crictl_download:      "{{ downloads.crictl }}"
-cni_download:         "{{ downloads.cni }}"
-etcd_download:        "{{ downloads.etcd }}"
-helm_download:        "{{ downloads.helm }}"
-calicoctl_download:   "{{ downloads.calicoctl }}"
-calico_crds_download: "{{ downloads.calico_crds }}"
-
-# --- Image registries (your Nexus mirrors) ---
-
-registry_host: "192.168.154.133:5000"
-kube_image_repo:   "192.168.154.133:5000/kubespray/registry.k8s.io"
-gcr_image_repo:    "192.168.154.133:5000/kubespray/registry.k8s.io"
-docker_image_repo: "192.168.154.133:5000/kubespray/docker.io"
-quay_image_repo:   "192.168.154.133:5000/kubespray/quay.io"
-github_image_repo: "192.168.154.133:5000/kubespray/ghcr.io"
-
-  #containerd_registries_mirrors:
-  #  - prefix: "docker.io"
-  #    mirrors:
-  #      - host: "http://192.168.154.133:500/kubespray"
-  #        capabilities: ["pull", "resolve"]
-  #    override_path: true
-  #    skip_verify: true
-  #
-  #  - prefix: "quay.io"
-  #    mirrors:
-  #      - host: "http://192.168.154.133:5000/kubespray"
-  #        capabilities: ["pull", "resolve"]
-  #    override_path: true
-  #    skip_verify: true
-  #
-  #  - prefix: "ghcr.io"
-  #    mirrors:
-  #      - host: "http://192.168.154.133:5000/kubespray"
-  #        capabilities: ["pull", "resolve"]
-  #    override_path: true
-  #    skip_verify: true
-  #
-  #  - prefix: "registry.k8s.io"
-  #    mirrors:
-  #      - host: "http://192.168.154.133:5000/kubespray"
-  #        capabilities: ["pull", "resolve"]
-  #    override_path: true
-  #    skip_verify: true
-  #
-  #containerd_registry_auth:
-  #  - registry: "192.168.154.133:5000"
-  #    username: "admin"
-  #    password: "123"
+## Kubernetes components
+kubeadm_download_url: "{{ files_repo }}/dl.k8s.io/release/v{{ kube_version }}/bin/linux/{{ image_arch }}/kubeadm"
+kubectl_download_url: "{{ files_repo }}/dl.k8s.io/release/v{{ kube_version }}/bin/linux/{{ image_arch }}/kubectl"
+kubelet_download_url: "{{ files_repo }}/dl.k8s.io/release/v{{ kube_version }}/bin/linux/{{ image_arch }}/kubelet"
 
 
-  # # Treat Nexus (port 5000) as plain HTTP
-  # containerd_insecure_registries:
-  #   - "192.168.154.133:5000"
-  # 
-  # # (Optional but recommended) registry mirrors for upstream names
-  # containerd_registry_mirrors:
-  #   "registry.k8s.io":
-  #     - "http://192.168.154.133:5000/kubespray/registry.k8s.io"
-  #   "k8s.gcr.io":
-  #     - "http://192.168.154.133:5000/kubespray/registry.k8s.io"
-  #   "docker.io":
-  #     - "http://192.168.154.133:5000/kubespray/docker.io"
-  #   "quay.io":
-  #     - "http://192.168.154.133:5000/kubespray/quay.io"
-  #   "ghcr.io":
-  #     - "http://192.168.154.133:5000/kubespray/ghcr.io"
-  # 
+## Two options - Override entire repository or override only a single binary.
+
+## [Optional] 1 - Override entire binary repository
+github_url: "{{ files_repo }}/github.com"
+dl_k8s_io_url: "{{ files_repo }}/dl.k8s.io"
+storage_googleapis_url: "{{ files_repo }}/storage.googleapis.com"
+get_helm_url: "{{ files_repo }}/get.helm.sh"
+
+## [Optional] 2 - Override a specific binary
+## CNI Plugins
+cni_download_url: "{{ files_repo }}/github.com/containernetworking/plugins/releases/download/v{{ cni_version }}/cni-plugins-linux-{{ image_arch }}-v{{ cni_version }}.tgz"
+
+## cri-tools
+crictl_download_url: "{{ files_repo }}/github.com/kubernetes-sigs/cri-tools/releases/download/v{{ crictl_version }}/crictl-v{{ crictl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz"
+
+## [Optional] etcd: only if you use etcd_deployment=host
+etcd_download_url: "{{ files_repo }}/github.com/etcd-io/etcd/releases/download/v{{ etcd_version }}/etcd-v{{ etcd_version }}-linux-{{ image_arch }}.tar.gz"
+
+# [Optional] Calico: If using Calico network plugin
+# calicoctl_download_url: "{{ files_repo }}/github.com/projectcalico/calico/releases/download/v{{ calico_ctl_version }}/calicoctl-linux-{{ image_arch }}"
+# [Optional] Calico with kdd: If using Calico network plugin with kdd datastore
+# calico_crds_download_url: "{{ files_repo }}/github.com/projectcalico/calico/archive/v{{ calico_version }}.tar.gz"
+
+# [Optional] Cilium: If using Cilium network plugin
+ciliumcli_download_url: "{{ files_repo }}/github.com/cilium/cilium-cli/releases/download/v{{ cilium_cli_version }}/cilium-linux-{{ image_arch }}.tar.gz"
+
+# [Optional] helm: only if you set helm_enabled: true
+helm_download_url: "{{ files_repo }}/get.helm.sh/helm-v{{ helm_version }}-linux-{{ image_arch }}.tar.gz"
+
+# [Optional] crun: only if you set crun_enabled: true
+crun_download_url: "{{ files_repo }}/github.com/containers/crun/releases/download/{{ crun_version }}/crun-{{ crun_version }}-linux-{{ image_arch }}"
+
+# [Optional] kata: only if you set kata_containers_enabled: true
+kata_containers_download_url: "{{ files_repo }}/github.com/kata-containers/kata-containers/releases/download/{{ kata_containers_version }}/kata-static-{{ kata_containers_version }}-{{ image_arch }}.tar.xz"
+
+# [Optional] cri-dockerd: only if you set container_manager: docker
+cri_dockerd_download_url: "{{ files_repo }}/github.com/Mirantis/cri-dockerd/releases/download/v{{ cri_dockerd_version }}/cri-dockerd-{{ cri_dockerd_version }}.{{ image_arch }}.tgz"
+
+# [Optional] runc: if you set container_manager to containerd or crio
+runc_download_url: "{{ files_repo }}/github.com/opencontainers/runc/releases/download/v{{ runc_version }}/runc.{{ image_arch }}"
+
+# [Optional] cri-o: only if you set container_manager: crio
+crio_download_base: "download.opensuse.org/repositories/devel:kubic:libcontainers:stable"
+crio_download_crio: "http://{{ crio_download_base }}:/cri-o:/"
+crio_download_url: "{{ files_repo }}/storage.googleapis.com/cri-o/artifacts/cri-o.{{ image_arch }}.v{{ crio_version }}.tar.gz"
+skopeo_download_url: "{{ files_repo }}/github.com/lework/skopeo-binary/releases/download/v{{ skopeo_version }}/skopeo-linux-{{ image_arch }}"
+
+# [Optional] containerd: only if you set container_runtime: containerd
+containerd_download_url: "{{ files_repo }}/github.com/containerd/containerd/releases/download/v{{ containerd_version }}/containerd-{{ containerd_version }}-linux-{{ image_arch }}.tar.gz"
+nerdctl_download_url: "{{ files_repo }}/github.com/containerd/nerdctl/releases/download/v{{ nerdctl_version }}/nerdctl-{{ nerdctl_version }}-{{ ansible_system | lower }}-{{ image_arch }}.tar.gz"
+
+# [Optional] runsc,containerd-shim-runsc: only if you set gvisor_enabled: true
+gvisor_runsc_download_url: "{{ files_repo }}/storage.googleapis.com/gvisor/releases/release/{{ gvisor_version }}/{{ ansible_architecture }}/runsc"
+gvisor_containerd_shim_runsc_download_url: "{{ files_repo }}/storage.googleapis.com/gvisor/releases/release/{{ gvisor_version }}/{{ ansible_architecture }}/containerd-shim-runsc-v1"
+
+
+## CentOS/Redhat/AlmaLinux
+### For EL8, baseos and appstream must be available,
+### By default we enable those repo automatically
+# rhel_enable_repos: false
+### Docker / Containerd
+# docker_rh_repo_base_url: "{{ yum_repo }}/docker-ce/$releasever/$basearch"
+# docker_rh_repo_gpgkey: "{{ yum_repo }}/docker-ce/gpg"
+
+## Fedora
+### Docker
+# docker_fedora_repo_base_url: "{{ yum_repo }}/docker-ce/{{ ansible_distribution_major_version }}/{{ ansible_architecture }}"
+# docker_fedora_repo_gpgkey: "{{ yum_repo }}/docker-ce/gpg"
+### Containerd
+# containerd_fedora_repo_base_url: "{{ yum_repo }}/containerd"
+# containerd_fedora_repo_gpgkey: "{{ yum_repo }}/docker-ce/gpg"
+
+## Debian
+### Docker
+# docker_debian_repo_base_url: "{{ debian_repo }}/docker-ce"
+# docker_debian_repo_gpgkey: "{{ debian_repo }}/docker-ce/gpg"
+### Containerd
+# containerd_debian_repo_base_url: "{{ debian_repo }}/containerd"
+# containerd_debian_repo_gpgkey: "{{ debian_repo }}/containerd/gpg"
+# containerd_debian_repo_repokey: 'YOURREPOKEY'
+
+## Ubuntu
+### Docker
+# docker_ubuntu_repo_base_url: "{{ ubuntu_repo }}/docker-ce"
+# docker_ubuntu_repo_gpgkey: "{{ ubuntu_repo }}/docker-ce/gpg"
+### Containerd
+# containerd_ubuntu_repo_base_url: "{{ ubuntu_repo }}/containerd"
+# containerd_ubuntu_repo_gpgkey: "{{ ubuntu_repo }}/containerd/gpg"
+# containerd_ubuntu_repo_repokey: 'YOURREPOKEY'
 
 ```
 [↩ back to YMLs list](#gv-list)
 <a id="gv-k8s"></a>
-### B) `inventory/mycluster/group_vars/k8s-cluster.yml`
+### B) `inventory/mycluster/group_vars/k8s_cluster/k8s-cluster.yml`
 ```yaml
 ---
 # Kubernetes configuration dirs and system namespace.
@@ -966,9 +812,11 @@ credentials_dir: "{{ inventory_dir }}/credentials"
 # kube_webhook_authorization_url: https://...
 # kube_webhook_authorization_url_skip_tls_verify: false
 
-# Choose network plugin (cilium, calico, kube-ovn or flannel. Use cni for generic cni plugin)
+# Choose network plugin (cilium, calico, kube-ovn, weave or flannel. Use cni for generic cni plugin)
 # Can also be set to 'cloud', which lets the cloud provider setup appropriate routing
-kube_network_plugin: calico
+# kube_network_plugin: cilium
+
+kube_network_plugin: custom_cni
 
 # Setting multi_networking to true will install Multus: https://github.com/k8snetworkplumbingwg/multus-cni
 kube_network_plugin_multus: false
@@ -997,8 +845,6 @@ kube_pods_subnet: 10.233.64.0/18
 #  - kube_network_node_prefix: 25
 #  - kubelet_max_pods: 110
 kube_network_node_prefix: 24
-
-kube_version: "1.33.3"
 
 # Kubernetes internal network for IPv6 services, unused block of space.
 # This is only used if ipv6_stack is set to true
@@ -1046,19 +892,11 @@ kube_proxy_nodeport_addresses: >-
 ## Encrypting Secret Data at Rest
 kube_encrypt_secret_data: false
 
-dns_autoscaler_enabled: false
-dnsautoscaler_enabled: false
-
-nginx_proxy_enabled: false  # turns off the nginx-proxy DaemonSet
-apiserver_loadbalancer_localhost: false
-loadbalancer_apiserver_localhost: false
-
-
 # Graceful Node Shutdown (Kubernetes >= 1.21.0), see https://kubernetes.io/blog/2021/04/21/graceful-node-shutdown-beta/
 # kubelet_shutdown_grace_period had to be greater than kubelet_shutdown_grace_period_critical_pods to allow
 # non-critical podsa to also terminate gracefully
-# kubelet_shutdown_grace_period: 60s
-# kubelet_shutdown_grace_period_critical_pods: 20s
+kubelet_shutdown_grace_period: 60s
+kubelet_shutdown_grace_period_critical_pods: 20s
 
 # DNS configuration.
 # Kubernetes cluster name, also will be used as DNS domain
@@ -1078,7 +916,7 @@ dns_mode: coredns
 # Set manual server if using a custom cluster DNS server
 # manual_dns_server: 10.x.x.x
 # Enable nodelocal dns cache
-enable_nodelocaldns: false
+enable_nodelocaldns: true
 enable_nodelocaldns_secondary: false
 nodelocaldns_ip: 169.254.25.10
 nodelocaldns_health_port: 9254
@@ -1149,7 +987,7 @@ kubernetes_audit: false
 default_kubelet_config_dir: "{{ kube_config_dir }}/dynamic_kubelet_dir"
 
 # Make a copy of kubeconfig on the host that runs Ansible in {{ inventory_dir }}/artifacts
-kubeconfig_localhost: false
+# kubeconfig_localhost: false
 # Use ansible_host as external api ip when copying over kubeconfig.
 # kubeconfig_localhost_ansible_host: false
 # Download kubectl onto the host that runs Ansible in {{ bin_dir }}
@@ -1168,25 +1006,25 @@ kubeconfig_localhost: false
 # kubelet_kubelet_cgroups_cgroupfs: "/system.slice/kubelet.service"
 
 # Whether to run kubelet and container-engine daemons in a dedicated cgroup.
-# kube_reserved: false
+kube_reserved: true
 ## Uncomment to override default values
 ## The following two items need to be set when kube_reserved is true
-# kube_reserved_cgroups_for_service_slice: kube.slice
-# kube_reserved_cgroups: "/{{ kube_reserved_cgroups_for_service_slice }}"
-# kube_memory_reserved: 256Mi
-# kube_cpu_reserved: 100m
-# kube_ephemeral_storage_reserved: 2Gi
-# kube_pid_reserved: "1000"
+kube_reserved_cgroups_for_service_slice: kube.slice
+kube_reserved_cgroups: "/{{ kube_reserved_cgroups_for_service_slice }}"
+kube_memory_reserved: 512Mi
+kube_cpu_reserved: 250m
+kube_ephemeral_storage_reserved: 2Gi
+kube_pid_reserved: "1000"
 
 ## Optionally reserve resources for OS system daemons.
-# system_reserved: true
+system_reserved: true
 ## Uncomment to override default values
 ## The following two items need to be set when system_reserved is true
-# system_reserved_cgroups_for_service_slice: system.slice
-# system_reserved_cgroups: "/{{ system_reserved_cgroups_for_service_slice }}"
-# system_memory_reserved: 512Mi
-# system_cpu_reserved: 500m
-# system_ephemeral_storage_reserved: 2Gi
+system_reserved_cgroups_for_service_slice: system.slice
+system_reserved_cgroups: "/{{ system_reserved_cgroups_for_service_slice }}"
+system_memory_reserved: 1024Mi
+system_cpu_reserved: 500m
+system_ephemeral_storage_reserved: 3Gi
 
 ## Eviction Thresholds to avoid system OOMs
 # https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/#eviction-thresholds
@@ -1198,7 +1036,16 @@ kubeconfig_localhost: false
 
 ## Supplementary addresses that can be added in kubernetes ssl keys.
 ## That can be useful for example to setup a keepalived virtual IP
-# supplementary_addresses_in_ssl_keys: [10.0.0.1, 10.0.0.2, 10.0.0.3]
+supplementary_addresses_in_ssl_keys:
+  - apiserver.mycluster.co
+  - apiserver
+  - master1
+  - master2
+  - master3
+  - 192.168.154.137  # kubesoray IP
+  - 192.168.154.131  # master1 IP
+  - 192.168.154.132  # master2 IP
+  - 192.168.154.134  # master3 IP
 
 ## Running on top of openstack vms with cinder enabled may lead to unschedulable pods due to NoVolumeZoneConflict restriction in kube-scheduler.
 ## See https://github.com/kubernetes-sigs/kubespray/issues/2141
@@ -1227,7 +1074,7 @@ persistent_volumes_enabled: false
 # nvidia_gpu_device_plugin_container: "registry.k8s.io/nvidia-gpu-device-plugin@sha256:0842734032018be107fa2490c98156992911e3e1f2a21e059ff0105b07dd8e9e"
 
 ## Support tls min version, Possible values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13.
-# tls_min_version: ""
+tls_min_version: "VersionTLS12"
 
 ## Support tls cipher suites.
 # tls_cipher_suites: {}
@@ -1258,9 +1105,9 @@ persistent_volumes_enabled: false
 event_ttl_duration: "1h0m0s"
 
 ## Automatically renew K8S control plane certificates on first Monday of each month
-auto_renew_certificates: false
+auto_renew_certificates: true
 # First Monday of each month
-# auto_renew_certificates_systemd_calendar: "Mon *-*-1,2,3,4,5,6,7 03:00:00"
+auto_renew_certificates_systemd_calendar: "Mon *-*-1,2,3,4,5,6,7 03:{{ groups['kube_control_plane'].index(inventory_hostname) }}0:00"
 
 kubeadm_patches_dir: "{{ kube_config_dir }}/patches"
 kubeadm_patches: []
@@ -1284,111 +1131,103 @@ kubeadm_patches: []
 
 # Set to true to remove the role binding to anonymous users created by kubeadm
 remove_anonymous_access: false
-
 ```
 [↩ back to YMLs list](#gv-list)
 <a id="gv-containerd"></a>
-### C) `inventory/mycluster/group_vars/containerd.yml`
+### C) `inventory/mycluster/group_vars/all/containerd.yml`
 ```yaml
 ---
-# inventory/mycluster/group_vars/all/containerd.yml
-# Make containerd read per-registry hosts.toml files
-containerd_registries_cfg_dir: "/etc/containerd/certs.d"
+# Please see roles/container-engine/containerd/defaults/main.yml for more configuration options
 
-# Your Nexus base (HTTP)
-nexus_host_with_port: "192.168.154.133:5000"
+# containerd_storage_dir: "/var/lib/containerd"
+# containerd_state_dir: "/run/containerd"
+# containerd_oom_score: 0
 
-# === credentials (used in Authorization header) ===
-nexus_user: "admin"         # <--- set yours
-nexus_pass: "123"      # <--- set yours
-nexus_auth_b64: "{{ (nexus_user + ':' + nexus_pass) | b64encode }}"
+# containerd_default_runtime: "runc"
+# containerd_snapshotter: "native"
 
-# DO NOT set deprecated auth vars; use headers below instead.
+# containerd_runc_runtime:
+#   name: runc
+#   type: "io.containerd.runc.v2"
+#   engine: ""
+#   root: ""
 
-# === Mirrors for each upstream registry the cluster will pull from ===
-# Shape REQUIRED by Kubespray/containerd:
-# - prefix: "<upstream host>"
-#   server: "https://<upstream host>"       # optional; defaults to https://<prefix>
-#   mirrors:
-#     - host: "http://<nexus>:<port>/<path-to-proxy-root>"
-#       capabilities: ["pull", "resolve"]
-#       skip_verify: true                   # safe for HTTP or self-signed TLS
-#       override_path: true                 # REQUIRED because your proxy path includes /kubespray/<upstream>
-#       header:
-#         Authorization: ["Basic {{ nexus_auth_b64 }}"]   # remove this section if your Nexus is anonymous
+# containerd_additional_runtimes:
+# Example for Kata Containers as additional runtime:
+#   - name: kata
+#     type: "io.containerd.kata.v2"
+#     engine: ""
+#     root: ""
 
+# containerd_grpc_max_recv_message_size: 16777216
+# containerd_grpc_max_send_message_size: 16777216
+
+# Containerd debug socket location: unix or tcp format
+# containerd_debug_address: ""
+
+# Containerd log level
+# containerd_debug_level: "info"
+
+# Containerd logs format, supported values: text, json
+# containerd_debug_format: ""
+
+# Containerd debug socket UID
+# containerd_debug_uid: 0
+
+# Containerd debug socket GID
+# containerd_debug_gid: 0
+
+# containerd_metrics_address: ""
+
+# containerd_metrics_grpc_histogram: false
+
+# Registries defined within containerd.
 containerd_registries_mirrors:
-  - prefix: "192.168.154.133:5000"
-    server: "http://192.168.154.133:5000" 
-    mirrors:
-      - host: "http://192.168.154.133:5000"
-        capabilities: ["pull","resolve"]
-        skip_verify: true
-        override_path: true
-        header:
-          Authorization: ["Basic {{ nexus_auth_b64 }}"]
+ - prefix: docker.io
+   mirrors:
+    - host: http://192.168.154.133:5000
+      capabilities: ["pull", "resolve"]
+      skip_verify: false
+ - prefix: quay.io
+   mirrors:
+    - host: http://192.168.154.133:5002
+      capabilities: ["pull", "resolve"]
+      skip_verify: false
+ - prefix: registry.k8s.io
+   mirrors:
+    - host: http://192.168.154.133:5001
+      capabilities: ["pull", "resolve"]
+      skip_verify: false
+ - prefix: ghcr.io
+   mirrors:
+    - host: http://192.168.154.133:5003
+      capabilities: ["pull", "resolve"]
+      skip_verify: false
 
-  # docker.io images via Nexus
-  - prefix: "docker.io"
-    server: "http://192.168.154.133:5000"
-    mirrors:
-      - host: "http://{{ nexus_host_with_port }}/kubespray/docker.io"
-        capabilities: ["pull", "resolve"]
-        skip_verify: true
-        override_path: true
-        header:
-          Authorization: ["Basic {{ nexus_auth_b64 }}"]
+# containerd_max_container_log_line_size: 16384
 
-  # registry.k8s.io (K8s core images) via Nexus
-  - prefix: "registry.k8s.io"
-    server: "http://192.168.154.133:5000"
-    mirrors:
-      - host: "http://{{ nexus_host_with_port }}/kubespray/registry.k8s.io"
-        capabilities: ["pull", "resolve"]
-        skip_verify: true
-        override_path: true
-        header:
-          Authorization: ["Basic {{ nexus_auth_b64 }}"]
-
-  # ghcr.io via Nexus
-  - prefix: "ghcr.io"
-    server: "http://192.168.154.133:5000"
-    mirrors:
-      - host: "http://{{ nexus_host_with_port }}/kubespray/ghcr.io"
-        capabilities: ["pull", "resolve"]
-        skip_verify: true
-        override_path: true
-        header:
-          Authorization: ["Basic {{ nexus_auth_b64 }}"]
-
-  # quay.io via Nexus
-  - prefix: "quay.io"
-    server: "http://192.168.154.133:5000"
-    mirrors:
-      - host: "http://{{ nexus_host_with_port }}/kubespray/quay.io"
-        capabilities: ["pull", "resolve"]
-        skip_verify: true
-        override_path: true
-        header:
-          Authorization: ["Basic {{ nexus_auth_b64 }}"]
-
-# Optional: ensure containerd looks at certs.d
-containerd_config:
-  version: 2
-  plugins:
-    "io.containerd.grpc.v1.cri":
-      registry:
-        config_path: "{{ containerd_registries_cfg_dir }}"
-
+containerd_registry_auth:
+  - registry: 192.168.154.133:5000
+    username: admin
+    password: admin
+  - registry: 192.168.154.133:5001
+    username: admin
+    password: admin
+  - registry: 192.168.154.133:5002
+    username: admin
+    password: admin
+  - registry: 192.168.154.133:5003
+    username: admin
+    password: admin
 ```
 
 ### D) Offline Lists (from contrib/offline)
 
 #### Example of `files.list`
 ```text
-[https://dl.k8s.io/release/v1.33.3/bin/linux/amd64/kubelet
-https://dl.k8s.io/release/v1.33.3/bin/linux/amd64/kubectl
-https://dl.k8s.io/release/v1.33.3/bin/linux/amd64/kubeadm
+https://dl.k8s.io/release/v1.32.5/bin/linux/amd64/kubelet
+https://dl.k8s.io/release/v1.32.5/bin/linux/amd64/kubectl
+https://dl.k8s.io/release/v1.32.5/bin/linux/amd64/kubeadm
 https://github.com/etcd-io/etcd/releases/download/v3.5.21/etcd-v3.5.21-linux-amd64.tar.gz
 https://github.com/containernetworking/plugins/releases/download/v1.4.1/cni-plugins-linux-amd64-v1.4.1.tgz
 https://github.com/projectcalico/calico/releases/download/v3.29.4/calicoctl-linux-amd64
@@ -1432,7 +1271,29 @@ https://github.com/lework/skopeo-binary/releases/download/v1.16.1/skopeo-linux-a
 https://github.com/mikefarah/yq/releases/download/v4.42.1/yq_linux_amd64
 https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml)
 
-```
+](https://dl.k8s.io/release/v1.32.5/bin/linux/amd64/kubelet
+https://dl.k8s.io/release/v1.32.5/bin/linux/amd64/kubectl
+https://dl.k8s.io/release/v1.32.5/bin/linux/amd64/kubeadm
+https://github.com/etcd-io/etcd/releases/download/v3.5.16/etcd-v3.5.16-linux-amd64.tar.gz
+https://github.com/containernetworking/plugins/releases/download/v1.4.1/cni-plugins-linux-amd64-v1.4.1.tgz
+https://github.com/projectcalico/calico/releases/download/v3.29.3/calicoctl-linux-amd64
+https://github.com/projectcalico/calico/archive/v3.29.3.tar.gz
+https://github.com/cilium/cilium-cli/releases/download/v0.18.3/cilium-linux-amd64.tar.gz
+https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.32.0/crictl-v1.32.0-linux-amd64.tar.gz
+https://storage.googleapis.com/cri-o/artifacts/cri-o.amd64.v1.32.0.tar.gz
+https://get.helm.sh/helm-v3.16.4-linux-amd64.tar.gz
+https://github.com/opencontainers/runc/releases/download/v1.2.6/runc.amd64
+https://github.com/containers/crun/releases/download/1.17/crun-1.17-linux-amd64
+https://github.com/youki-dev/youki/releases/download/v0.5.3/youki-0.5.3-x86_64-gnu.tar.gz
+https://github.com/kata-containers/kata-containers/releases/download/3.7.0/kata-static-3.7.0-amd64.tar.xz
+https://storage.googleapis.com/gvisor/releases/release/20250512.0/x86_64/runsc
+https://storage.googleapis.com/gvisor/releases/release/20250512.0/x86_64/containerd-shim-runsc-v1
+https://github.com/containerd/nerdctl/releases/download/v2.0.5/nerdctl-2.0.5-linux-amd64.tar.gz
+https://github.com/containerd/containerd/releases/download/v2.0.5/containerd-2.0.5-linux-amd64.tar.gz
+https://github.com/Mirantis/cri-dockerd/releases/download/v0.3.17/cri-dockerd-0.3.17.amd64.tgz
+https://github.com/lework/skopeo-binary/releases/download/v1.16.1/skopeo-linux-amd64
+https://github.com/mikefarah/yq/releases/download/v4.42.1/yq_linux_amd64
+https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml)```
 
 #### Example of `images.list`
 ```text
@@ -1490,7 +1351,6 @@ registry.k8s.io/kube-apiserver:v1.32.5
 registry.k8s.io/kube-controller-manager:v1.32.5
 registry.k8s.io/kube-scheduler:v1.32.5
 registry.k8s.io/kube-proxy:v1.32.5
-
 ```
 
 ### E) Helper Scripts (verbatim)
@@ -1632,7 +1492,7 @@ echo "Missing: ${#missing[@]}   (saved to $OUT)"
 ## ========================
 NEXUS_URL="http://192.168.154.133:8081/repository/local/"   # no trailing slash
 NEXUS_USER="admin"
-NEXUS_PASS="123"
+NEXUS_PASS="admin"
 
 # Each entry: "local_path nexus_repo_name"
 REPOS=(
