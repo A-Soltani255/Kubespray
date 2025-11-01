@@ -1586,94 +1586,67 @@ echo "🎉 Finished. Successful uploads recorded in: $LOG_FILE"
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Usage:
-#   NEW_REGISTRY=192.168.154.133:5000 ./load-and-retag.sh /path/to/tars
-# Optional envs:
-#   PUSH=true           # also docker push the new tags
-#   REMOVE_OLD_TAGS=true  # remove the old tags after retagging
+# ---- config ----
+IMAGES_DIR="${1:-/opt/container-images}"          # directory of *.tar or *.tar.gz
+SRC_HUB="192.168.10.1:4000"                       # where they were originally tagged from
+SRC_NS="kubespray"                                # prefix after SRC_HUB (present in your names)
+CLI="${CLI:-docker}"                              # use 'docker' (default) or set CLI=nerdctl
+PUSH="${PUSH:-1}"                                 # set PUSH=1 to push after retag
 
-SRC_DIR="${1:-.}"
-NEW_REGISTRY="${NEW_REGISTRY:-}"
-PUSH="${PUSH:-true}"
-REMOVE_OLD_TAGS="${REMOVE_OLD_TAGS:-false}"
-
-if [[ -z "$NEW_REGISTRY" ]]; then
-  echo "ERROR: Set NEW_REGISTRY ("NEW_REGISTRY")"; exit 1
-fi
-
-command -v docker >/dev/null || { echo "ERROR: docker not found"; exit 1; }
-HAS_JQ=true
-command -v jq >/dev/null || HAS_JQ=false
+# upstream -> internal registry map
+declare -A MAP=(
+  ["docker.io"]="192.168.10.1:5000"
+  ["registry.k8s.io"]="192.168.10.1:5001"
+  ["quay.io"]="192.168.10.1:5002"
+  ["ghcr.io"]="192.168.10.1:5003"
+)
 
 shopt -s nullglob
-mapfile -t TAR_FILES < <(find "$SRC_DIR" -maxdepth 1 -type f -name '*.tar' | sort)
 
-if (( ${#TAR_FILES[@]} == 0 )); then
-  echo "No .tar files found in: $SRC_DIR"
-  exit 0
-fi
-
-echo "Found ${#TAR_FILES[@]} tar files. Target registry: $NEW_REGISTRY"
-echo
-
-for TAR in "${TAR_FILES[@]}"; do
-  echo "==> Processing: $TAR"
-
-  TAGS=()
-  if $HAS_JQ; then
-    # Extract tags from manifest.json inside the tar (no extraction to disk).
-    # If your files are .tar.gz, change 'tar -xOf' to 'tar -xOzf'.
-    if TAGS_TEXT=$(tar -xOf "$TAR" manifest.json 2>/dev/null | jq -r '.[].RepoTags[]?' | sed '/^null$/d' | sort -u); then
-      readarray -t TAGS <<<"$TAGS_TEXT"
-    fi
-  fi
-
-  if (( ${#TAGS[@]} == 0 )); then
-    # Fallback: get tags from docker load output
-    LOAD_OUT=$(docker load -i "$TAR" 2>&1)
-    echo "$LOAD_OUT" | sed 's/^/    /'
-    # Lines look like: "Loaded image: <repo>:<tag>"
-    readarray -t TAGS < <(echo "$LOAD_OUT" | awk -F': ' '/Loaded image: /{print $2}' | sed 's/@.*$//' | sort -u)
+load_archive() {
+  local f="$1"
+  if [[ "$f" == *.tar.gz || "$f" == *.tgz ]]; then
+    gunzip -c -- "$f" | $CLI load
   else
-    # We already know tags; now actually load the image (quietly)
-    docker load -i "$TAR" >/dev/null
-    echo "    Loaded image with tags:"
-    printf "    - %s\n" "${TAGS[@]}"
+    $CLI load -i "$f"
   fi
+}
 
-  if (( ${#TAGS[@]} == 0 )); then
-    echo "    WARNING: No tags found for $TAR; skipping retag."
-    continue
-  fi
+echo "==> Scanning: $IMAGES_DIR"
+for f in "$IMAGES_DIR"/*.tar "$IMAGES_DIR"/*.tar.gz "$IMAGES_DIR"/*.tgz; do
+  [[ -e "$f" ]] || continue
+  echo "--> Loading $f"
+  # capture ALL image names printed by load
+  mapfile -t LOADED < <(load_archive "$f" | awk -F': ' '/Loaded image/ {print $2}')
 
-  for OLD_TAG in "${TAGS[@]}"; do
-    # Only replace the registry part (up to the first '/')
-    if [[ "$OLD_TAG" != */* ]]; then
-      echo "    Skipping non-namespaced tag: $OLD_TAG"
+  for IMG in "${LOADED[@]}"; do
+    # expected: 192.168.10.1:4000/kubespray/<upstream>/<path>:<tag>
+    # strip hub and optional kubespray/ namespace
+    STRIPPED="${IMG#${SRC_HUB}/}"
+    STRIPPED="${STRIPPED#${SRC_NS}/}"
+
+    UPSTREAM="${STRIPPED%%/*}"       # docker.io | registry.k8s.io | quay.io | ghcr.io
+    REST="${STRIPPED#*/}"            # e.g. mirantis/k8s-netchecker-server:v1.2.2
+
+    TARGET_BASE="${MAP[$UPSTREAM]:-}"
+    if [[ -z "$TARGET_BASE" ]]; then
+      echo "WARN: Unknown upstream '$UPSTREAM' in '$IMG' (skipping)"
       continue
     fi
-    REST="${OLD_TAG#*/}"               # everything after the first '/'
-    NEW_TAG="${NEW_REGISTRY}/${REST}"  # keep path & tag, change only registry
 
-    echo "    Retag: $OLD_TAG  -->  $NEW_TAG"
-    docker tag "$OLD_TAG" "$NEW_TAG"
+    NEW="${TARGET_BASE}/${REST}"
 
-    if [[ "$PUSH" == "true" ]]; then
-      echo "    Pushing: $NEW_TAG"
-      docker push "$NEW_TAG"
-    fi
+    echo "Tagging: $IMG -> $NEW"
+    $CLI tag "$IMG" "$NEW"
 
-    if [[ "$REMOVE_OLD_TAGS" == "true" ]]; then
-      echo "    Removing old tag: $OLD_TAG"
-      docker rmi "$OLD_TAG" || true
+    if [[ "$PUSH" == "1" ]]; then
+      echo "Pushing: $NEW"
+      $CLI push "$NEW"
     fi
   done
-
-  echo
 done
 
 echo "Done."
-
 ```
 
 ---
@@ -1682,65 +1655,40 @@ echo "Done."
 
 > These are **rendered by Kubespray** from your containerd vars. Verify after a run.
 
-**`/etc/containerd/certs.d/registry.k8s.io/hosts.toml`**
-```toml
-server = "http://192.168.154.133:5000"
-[host."http://192.168.154.133:5000"]
-  capabilities = ["pull","resolve"]
-  skip_verify = true
-  override_path = true
-  [host."http://192.168.154.133:5000".header]
-    Authorization = ["Basic YWRtaW46MTIz"]
-```
-
 **`/etc/containerd/certs.d/docker.io/hosts.toml`**
 ```toml
-server = "http://192.168.154.133:5000"
-[host."http://192.168.154.133:5000/kubespray/docker.io"]
+server = "https://docker.io"
+[host."http://192.168.154.133:5000"]
   capabilities = ["pull","resolve"]
-  skip_verify = true
-  override_path = true
-  [host."http://192.168.154.133:5000/kubespray/docker.io".header]
-    Authorization = ["Basic YWRtaW46MTIz"]
+  skip_verify = false
+  override_path = false
 ```
 
 **`/etc/containerd/certs.d/ghcr.io/hosts.toml`**
 ```toml
-server = "http://192.168.154.133:5000"
-[host."http://192.168.154.133:5000/kubespray/ghcr.io"]
+server = "https://ghcr.io"
+[host."http://192.168.154.133:5003"]
   capabilities = ["pull","resolve"]
-  skip_verify = true
-  override_path = true
-  [host."http://192.168.154.133:5000/kubespray/ghcr.io".header]
-    Authorization = ["Basic YWRtaW46MTIz"]
+  skip_verify = false
+  override_path = false
 ```
 
 **`/etc/containerd/certs.d/quay.io/hosts.toml`**
 ```toml
-server = "http://192.168.154.133:5000"
-[host."http://192.168.154.133:5000/kubespray/quay.io"]
+server = "https://quay.io"
+[host."http://192.168.154.133:5002"]
   capabilities = ["pull","resolve"]
-  skip_verify = true
-  override_path = true
-  [host."http://192.168.154.133:5000/kubespray/quay.io".header]
-    Authorization = ["Basic YWRtaW46MTIz"]
+  skip_verify = false
+  override_path = false
 ```
 
 **`/etc/containerd/certs.d/registry.k8s.io/hosts.toml`**
 ```toml
-server = "http://192.168.154.133:5000"
-[host."http://192.168.154.133:5000/kubespray/registry.k8s.io"]
+server = "https://registry.k8s.io"
+[host."http://192.168.154.133:5001"]
   capabilities = ["pull","resolve"]
-  skip_verify = true
-  override_path = true
-  [host."http://192.168.154.133:5000/kubespray/registry.k8s.io".header]
-    Authorization = ["Basic YWRtaW46MTIz"]
-```
-
-If your Nexus requires auth and you configured `containerd_registry_auth(s)`, containerd will use the stored credentials. Only if you _must_ force a header, you can use `containerd_custom_hosts_conf` to inject:
-```toml
-[host."http://192.168.154.133:5000".header]
-  Authorization = "Basic <base64 user:pass>"
+  skip_verify = false
+  override_path = false
 ```
 
 ---
