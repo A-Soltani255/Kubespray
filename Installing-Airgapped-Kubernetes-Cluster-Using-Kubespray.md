@@ -218,9 +218,9 @@ frontend fe_30088
 backend be_k8s_api
     balance roundrobin
     option  tcp-check
-    server controller1 192.168.59.20:6443 check
-    server controller2 192.168.59.41:6443 check
-    server controller3 192.168.59.70:6443 check
+    server master1 192.168.59.20:6443 check
+    server master2 192.168.59.41:6443 check
+    server master3 192.168.59.70:6443 check
 
 # Workers HTTPS NodePort (usually ingress HTTPS)
 backend be_https_nodeport
