@@ -1321,13 +1321,15 @@ remove_anonymous_access: false
 ```
 [↩ back to YMLs list](#gv-list)
 <a id="gv-cni"></a>
-### B) Custom CNI via Helm — k8s-net-custom-cni.yml
+### C) Custom CNI via Helm — `inventory/shahkar/group_vars/k8s_cluster/k8s-net-custom-cni.yml`
 
-(This is why kube_network_plugin: custom_cni is set in inventory/shahkar/group_vars/k8s_cluster/k8s-cluster.yml.)
+*(This is why `kube_network_plugin: custom_cni` is set in `inventory/shahkar/group_vars/k8s_cluster/k8s-cluster.yml`.)*
 
-We use Kubespray’s custom CNI path to deploy Cilium from the Nexus Helm repo in our air-gapped LAN. Image pulls still reference quay.io etc., but containerd rewrites them to your four Nexus mirrors (:5000/:5001/:5002/:5003) per your hosts.toml.
+We use Kubespray’s **custom CNI** path to deploy **Cilium** from the **Nexus Helm repo** in our air-gapped LAN. Image pulls still reference `quay.io` etc., but `containerd` rewrites them to your four Nexus mirrors (`:5000/:5001/:5002/:5003`) per your hosts.toml. 
 
-Copy-paste (do on the Kubespray host)
+### Do on the Kubespray host
+
+```bash
 # Create the group_vars file (inventory: shahkar)
 sudo install -d -m 0755 inventory/shahkar/group_vars/k8s_cluster
 
@@ -1503,27 +1505,23 @@ sudo sed -i 's/^\(\s*kube_network_plugin:\s*\).*/\1custom_cni/' \
 
 # Converge (new cluster): Kubespray will pick up group_vars automatically
 ansible-playbook -i inventory/shahkar/hosts.yaml -b cluster.yml -vv
+```
 
-Token-by-token breakdown & safety notes
+### Token-by-token breakdown & safety notes
 
-install -d -m 0755 …/k8s_cluster
-Creates the target dir with sane permissions.
-
-tee … k8s-net-custom-cni.yml <<'YAML'
-Writes the file atomically. Single-quoted heredoc prevents shell expansion inside YAML.
-Consistency fix: custom_cni_chart_repository_url uses 192.168.154.133 (your Nexus elsewhere in the doc), not 192.168.59.29. If you truly host Helm on another IP, mirror that everywhere (containerd mirrors, examples, scripts).
-
-kubeProxyReplacement: True
-With kube-proxy enabled (your baseline lists it), strict replacement can conflict on datapath. Consider "partial" if you see iptables/ipvs oddities under load; otherwise disable kube-proxy cluster-wide before using strict replacement.
-
-Images still reference quay.io/registry.k8s.io
-That’s correct; your containerd hosts.toml maps these to Nexus (:5002, :5001, etc.), so no need to retag inside Helm values.
-
-sed -i … kube_network_plugin: custom_cni
-Makes the intent explicit in k8s-cluster.yml: we are using the custom CNI hook, deployed via Helm from Nexus.
-
-ansible-playbook … cluster.yml
-Fresh build: safe. Do not switch CNIs on an existing busy cluster; treat CNI changes as a rebuild unless you have a tested migration plan.
+* `install -d -m 0755 …/k8s_cluster`
+  Creates the target dir with sane permissions.
+* `tee … k8s-net-custom-cni.yml <<'YAML'`
+  Writes the file atomically. Single-quoted heredoc prevents shell expansion inside YAML.
+  **Consistency fix:** `custom_cni_chart_repository_url` uses **`192.168.154.133`** (your Nexus elsewhere in the doc), not `192.168.59.29`. If you truly host Helm on another IP, mirror that everywhere (containerd mirrors, examples, scripts). 
+* `kubeProxyReplacement: True`
+  With **kube-proxy enabled** (your baseline lists it), strict replacement can conflict on datapath. Consider `"partial"` if you see iptables/ipvs oddities under load; otherwise disable kube-proxy cluster-wide before using strict replacement.
+* **Images still reference `quay.io`/`registry.k8s.io`**
+  That’s correct; your **containerd hosts.toml** maps these to Nexus (`:5002`, `:5001`, etc.), so no need to retag inside Helm values. 
+* `sed -i … kube_network_plugin: custom_cni`
+  Makes the intent explicit in `k8s-cluster.yml`: *we are using the custom CNI hook, deployed via Helm from Nexus*.
+* `ansible-playbook … cluster.yml`
+  Fresh build: safe. **Do not** switch CNIs on an existing busy cluster; treat CNI changes as a rebuild unless you have a tested migration plan.
 
 [↩ back to YMLs list](#gv-list)
 <a id="gv-containerd"></a>
