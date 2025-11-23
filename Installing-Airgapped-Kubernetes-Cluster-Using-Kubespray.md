@@ -135,7 +135,7 @@ With this foundation, you can move straight into the procedural sections and bui
 | master    | master3   | 192.168.154.134 | |
 | worker    | worker1   | 192.168.154.135 | |
 | worker    | worker2   | 192.168.154.136 | |
-| kubespray | kubespray | 192.168.154.137 | Serves offline binaries over HTTP: `http://192.168.154.137:8080/` |
+| kubespray | kubespray | 192.168.154.137 | It chould serves offline binaries over HTTP: `http://192.168.154.137:8080/` |
 | haproxy   | haproxy   | 192.168.154.137 | Forward requests on port 6443 to port 6443 on the master nodes, and requests on ports 443 and 80 to ports 30081 and 30080 on the worker nodes, respectively. |
 | nexus     | nexus     | 192.168.154.133 | YUM + Docker hosted registry on `:5000 :5001 :5002 :5003` |
 
