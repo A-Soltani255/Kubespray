@@ -1479,7 +1479,8 @@ https://github.com/containerd/containerd/releases/download/v2.0.5/containerd-2.0
 https://github.com/Mirantis/cri-dockerd/releases/download/v0.3.17/cri-dockerd-0.3.17.amd64.tgz
 https://github.com/lework/skopeo-binary/releases/download/v1.16.1/skopeo-linux-amd64
 https://github.com/mikefarah/yq/releases/download/v4.42.1/yq_linux_amd64
-https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml)```
+https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml)
+```
 
 #### Example of `images.list`
 ```text
