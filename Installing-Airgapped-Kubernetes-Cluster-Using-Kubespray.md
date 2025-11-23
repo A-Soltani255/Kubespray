@@ -1,6 +1,6 @@
 
 # Air‑Gapped Kubernetes with Kubespray — Complete Instruction
-_Last updated: 2025-08-25 14:50:51 UTC_
+_Last updated: 2025-11-23 14:50:51 UTC_
 
 
 ## Introduction:
@@ -149,6 +149,190 @@ With this foundation, you can move straight into the procedural sections and bui
 ##### ***CNI:*** Cilium (KDD CRDs)
 ##### ***Kubernetes version:*** 1.32.5
 ##### ***Kubespray version:*** 2.28.0
+
+
+## 0.5) HAProxy (on the **Kubespray host** 192.168.154.137)
+
+HAProxy provides a single, stable control-plane endpoint and L4 pass-through for app NodePorts. In this setup, HAProxy runs **on the same VM as Kubespray** (`192.168.154.137`). 
+
+### Copy-paste commands (do on 192.168.154.137)
+
+```bash
+# 1) Install + enable HAProxy
+sudo dnf -y install haproxy
+sudo systemctl enable --now haproxy
+
+# 2) Open firewall for API + HTTP/HTTPS + custom TCP 30088
+sudo firewall-cmd --permanent --add-service=https
+sudo firewall-cmd --permanent --add-service=http
+sudo firewall-cmd --permanent --add-port=6443/tcp
+sudo firewall-cmd --permanent --add-port=30088/tcp
+sudo firewall-cmd --reload
+
+# (SELinux) allow outbound connects from haproxy if enforcing
+# sudo setsebool -P haproxy_connect_any 1
+
+# 3) Write haproxy.cfg (exactly your config)
+sudo tee /etc/haproxy/haproxy.cfg >/dev/null <<'EOF'
+global
+    log /dev/log local0
+    log /dev/log local1 notice
+    daemon
+    maxconn 10000
+    tune.ssl.default-dh-param 2048
+
+defaults
+    log     global
+    mode    tcp                 # L4 passthrough
+    option  dontlognull
+    option  tcp-smart-accept
+    option  tcp-smart-connect
+    timeout connect 5s
+    timeout client  60s
+    timeout server  60s
+    retries 3
+
+# --- FRONTENDS ---
+# 1) Kubernetes API: 6443 -> controllers:6443
+frontend fe_k8s_api
+    bind *:6443
+    default_backend be_k8s_api
+
+# 2) HTTPS apps: 443 -> workers:30081
+frontend fe_https
+    bind *:443
+    default_backend be_https_nodeport
+
+# 3) HTTP apps: 80 -> workers:30080
+frontend fe_http
+    bind *:80
+    default_backend be_http_nodeport
+
+# 4) TCP pass-through 30088 -> workers:30088
+frontend fe_30088
+    bind *:30088
+    default_backend be_30088_nodeport
+
+# --- BACKENDS ---
+# Controllers (API server)
+backend be_k8s_api
+    balance roundrobin
+    option  tcp-check
+    server controller1 192.168.59.20:6443 check
+    server controller2 192.168.59.41:6443 check
+    server controller3 192.168.59.70:6443 check
+
+# Workers HTTPS NodePort (usually ingress HTTPS)
+backend be_https_nodeport
+    balance roundrobin
+    option  tcp-check
+    server worker1 192.168.59.21:30081 check
+    server worker2 192.168.59.22:30081 check
+
+# Workers HTTP NodePort (usually ingress HTTP)
+backend be_http_nodeport
+    balance roundrobin
+    option  tcp-check
+    server worker1 192.168.59.21:30080 check
+    server worker2 192.168.59.22:30080 check
+
+# Workers on NodePort 30088
+backend be_30088_nodeport
+    balance roundrobin
+    option  tcp-check
+    default-server inter 5s fall 3 rise 2
+    server worker1 192.168.59.21:30088 check
+    server worker2 192.168.59.22:30088 check
+EOF
+
+# 4) Restart and check status
+sudo systemctl restart haproxy
+sudo systemctl status haproxy --no-pager
+
+# 5) Point Kubernetes at the LB (Kubespray group_vars)
+#    Ensure these are present in inventory/mycluster/group_vars/k8s_cluster/k8s-cluster.yml
+sudo sed -i '/^apiserver_loadbalancer_domain_name:/d' inventory/mycluster/group_vars/k8s_cluster/k8s-cluster.yml
+sudo sed -i '/^apiserver_loadbalancer_port:/d' inventory/mycluster/group_vars/k8s_cluster/k8s-cluster.yml
+printf "apiserver_loadbalancer_domain_name: 192.168.154.137\napiserver_loadbalancer_port: 6443\n" | sudo tee -a inventory/mycluster/group_vars/k8s_cluster/k8s-cluster.yml
+
+# (Optional) fix comment in SANs: mark 192.168.154.137 as LB/HAProxy
+# and ensure 192.168.154.137 remains listed under supplementary_addresses_in_ssl_keys
+```
+
+#### Token-by-token breakdown + safety notes
+
+* `dnf -y install haproxy`
+
+  * `dnf` (package manager), `-y` auto-answers yes, installs HAProxy RPM.
+  * **Safety:** confirm repo trust; you already mirror RPMs via Nexus—stick to those repos to stay air-gapped. 
+* `systemctl enable --now haproxy`
+
+  * `enable` autostarts on boot; `--now` starts immediately.
+* `firewall-cmd --permanent --add-service=https|http`
+
+  * Opens 443/80. `--permanent` persists across reloads; follow with `--reload` to apply.
+* `--add-port=6443/tcp`, `--add-port=30088/tcp`
+
+  * Opens L4 pass-through ports for API and your custom TCP service.
+  * **Safety:** scope traffic using zones/sources if this host is reachable from outside the cluster.
+* `setsebool -P haproxy_connect_any 1` *(optional)*
+
+  * Allows HAProxy to connect out to any port/domain. Required in some enforcing SELinux policies.
+* `tee /etc/haproxy/haproxy.cfg <<'EOF' ... EOF`
+
+  * Overwrites config atomically. `<<'EOF'` (single-quoted heredoc) prevents shell expansion inside the block.
+  * **Safety:** keep a backup: `sudo cp /etc/haproxy/haproxy.cfg{,.bak}` before replacing.
+* Backends (`server <name> <ip:port> check`)
+
+  * `check` enables TCP health checks (uses `option tcp-check`); unhealthy targets are removed from rotation.
+  * **Safety:** ensure those controller/worker IPs are reachable from 192.168.154.137.
+* `sed -i` lines + `printf … | tee -a`
+
+  * Ensures `apiserver_loadbalancer_domain_name: 192.168.154.137` and `apiserver_loadbalancer_port: 6443` are present; kubeconfig will point to the LB. Your SAN list already includes `192.168.154.137`; just clarify its comment to “LB/HAProxy IP.” 
+
+**Common pitfalls**
+
+* If your ingress controller doesn’t actually use NodePorts `30080/30081`, change the fe_http/fe_https backends to whatever NodePorts your ingress exposes.
+* For long uploads / gRPC, bump `timeout client/server` (e.g., `5m`).
+* If you later change master/worker IPs, update this file and restart HAProxy.
+
+---
+
+### Verification (add to your “Post-Install Verification”)
+
+```bash
+# API through LB (expect TLS handshake / 403 when unauthenticated)
+curl -vk https://192.168.154.137:6443/ -m 5 || true
+
+# NodePorts via LB
+nc -vz 192.168.154.137 80
+nc -vz 192.168.154.137 443
+nc -vz 192.168.154.137 30088
+
+# kubeconfig should point at the LB now
+kubectl cluster-info
+```
+
+* Your topology section already defines the HAProxy role on `192.168.154.137` and describes forwarding for 6443/80/443—this test validates that wiring. 
+
+---
+
+### Rollback
+
+```bash
+# stop LB quickly
+sudo systemctl stop haproxy
+
+# restore previous config if needed
+sudo cp /etc/haproxy/haproxy.cfg.bak /etc/haproxy/haproxy.cfg && sudo systemctl restart haproxy
+
+# close ports if you opened them just for this test
+sudo firewall-cmd --permanent --remove-port=6443/tcp
+sudo firewall-cmd --permanent --remove-port=30088/tcp
+sudo firewall-cmd --reload
+```
+
+
 
 ---
 
