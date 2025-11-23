@@ -31,7 +31,7 @@ The environment used throughout:
 - Ensure every offline node has a local.repo pointing to Nexus and can dnf update without Internet.
 #### 3. Stage files on the Kubespray VM and serve over HTTP:
 - Place the offline binaries under /srv/offline-files/ following the exact paths Kubespray expects.
-- Serve them with a tiny HTTP server (python3 -m http.server 8080).
+- Serve them with a tiny HTTP server (`python3 -m http.server 8080`).
 #### 4. Automate the cluster build with Kubespray:
 - Prepare an inventory for master1, worker1, worker2.
 - Provide group_vars for offline, k8s-cluster, and containerd (mirrors, insecure HTTP, optional auth).
@@ -75,7 +75,7 @@ Kubespray is a mature, upstream-maintained collection of Ansible playbooks and r
 ### Scope, assumptions, and success criteria
 
 #### In scope
-- Three control planes (etcd on all three) fronted by HAProxy at 192.168.154.137:6443.
+- Three control planes (etcd on all three) fronted by HAProxy at `192.168.154.137:6443`.
 - Two worker nodes.
 - Air-gapped build using Nexus (YUM + Docker hosted).
 - `containerd` runtime with pull-through mirrors configured for HTTP on `192.168.154.133:5000`.
