@@ -151,11 +151,11 @@ With this foundation, you can move straight into the procedural sections and bui
 ##### ***Kubespray version:*** 2.28.0
 
 
-## 0.5) HAProxy (on the **Kubespray host** 192.168.154.137)
+## 0.1) HAProxy (on the **Kubespray host** 192.168.154.137)
 
 HAProxy provides a single, stable control-plane endpoint and L4 pass-through for app NodePorts. In this setup, HAProxy runs **on the same VM as Kubespray** (`192.168.154.137`). 
 
-### Copy-paste commands (do on 192.168.154.137)
+### Do on 192.168.154.137
 
 ```bash
 # 1) Install + enable HAProxy
