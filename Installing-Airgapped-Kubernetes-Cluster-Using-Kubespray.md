@@ -1002,8 +1002,8 @@ credentials_dir: "{{ inventory_dir }}/credentials"
 # Choose network plugin (cilium, calico, kube-ovn, weave or flannel. Use cni for generic cni plugin)
 # Can also be set to 'cloud', which lets the cloud provider setup appropriate routing
 # kube_network_plugin: cilium
-
-kube_network_plugin: custom_cni
+# it’s set because Cilium is going to installed via Helm using the inventory/shahkar/group_vars/k8s_cluster/k8s-net-custom-cni.yml file
+kube_network_plugin: custom_cni 
 
 # Setting multi_networking to true will install Multus: https://github.com/k8snetworkplumbingwg/multus-cni
 kube_network_plugin_multus: false
