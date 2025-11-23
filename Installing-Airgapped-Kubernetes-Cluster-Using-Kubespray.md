@@ -78,7 +78,7 @@ Kubespray is a mature, upstream-maintained collection of Ansible playbooks and r
 - Three control planes (etcd on all three) fronted by HAProxy at `192.168.154.137:6443`.
 - Two worker nodes.
 - Air-gapped build using Nexus (YUM + Docker hosted).
-- `containerd` runtime with pull-through mirrors configured for HTTP on `192.168.154.133:5000`.
+- `containerd` runtime with pull-through mirrors configured for HTTP on `192.168.154.133` `:5000` `:5001` `:5002` `:5003`.
 - Cilium networking , CoreDNS, kube-proxy; no nginx-proxy, no dns-autoscaler, no metrics-server, no Helm.
 
 #### Assumptions
