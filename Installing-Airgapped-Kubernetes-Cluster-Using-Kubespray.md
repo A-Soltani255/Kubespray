@@ -657,8 +657,8 @@ Copy your prepared **group_vars** into place:
 
 - [inventory/mycluster/group_vars/offline.yml](#gv-offline)
 - [inventory/mycluster/group_vars/k8s-cluster.yml](#gv-k8s)
-- [inventory/mycluster/group_vars/containerd.yml](#gv-containerd)
 - [inventory/shahkar/group_vars/k8s_cluster/k8s-net-custom-cni.yml](#gv-cni)
+- [inventory/mycluster/group_vars/containerd.yml](#gv-containerd)
 
 #### Log visibility in Kubespray (`no_log` & `unsafe_show_logs`)
 - `no_log` (Ansible): hides module args/results in output/logs. Ansible default is false, but Kubespray often sets `no_log: "{{ not (unsafe_show_logs | bool) }}"`, so the effective default is hidden.
