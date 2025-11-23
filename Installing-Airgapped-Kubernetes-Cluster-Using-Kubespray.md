@@ -9,7 +9,7 @@ This document documents—end-to-end—how to build and operate a Kubernetes 1.3
 The environment used throughout:
 - Control planes: master1 (`192.168.154.131`) master2 (`192.168.154.132`) master3 (`192.168.154.134`)
 - Workers: worker1 (`192.168.154.135`), worker2 (`192.168.154.136`)
-- Build/automation: kubespray (`192.168.154.137`) — also serves offline files over HTTP (`:8080`)
+- Build/automation: kubespray (`192.168.154.137`) — also chould serves offline files over HTTP (`:8080`)
 - Artifact hub: nexus (`192.168.154.133`) — YUM (hosted) for RPMs and Docker (hosted) registries on `:5000` `:5001` `:5002` `:5003` for images
 
 > Design choices (and why):
