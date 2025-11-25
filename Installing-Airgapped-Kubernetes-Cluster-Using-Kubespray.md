@@ -659,10 +659,13 @@ EOF
 <a id="gv-list"></a>
 Copy your prepared **group_vars** into place:
 
-- [inventory/mycluster/group_vars/offline.yml](#gv-offline)
-- [inventory/mycluster/group_vars/k8s-cluster.yml](#gv-k8s)
-- [inventory/shahkar/group_vars/k8s_cluster/k8s-net-custom-cni.yml](#gv-cni)
-- [inventory/mycluster/group_vars/containerd.yml](#gv-containerd)
+- [kubespray-2.28.0/inventory/mycluster/group_vars/offline.yml](#gv-offline)
+- [kubespray-2.28.0/inventory/mycluster/group_vars/k8s-cluster.yml](#gv-k8s)
+- [kubespray-2.28.0/inventory/shahkar/group_vars/k8s_cluster/k8s-net-custom-cni.yml](#gv-cni)
+- [kubespray-2.28.0/inventory/mycluster/group_vars/containerd.yml](#gv-containerd)
+
+Also create your prepared **hardening.yaml** file in the root directory of the Kubespray project.
+- [kubespray-2.28.0/hardening.yaml](#gv-hardening)
 
 #### Log visibility in Kubespray (`no_log` & `unsafe_show_logs`)
 - `no_log` (Ansible): hides module args/results in output/logs. Ansible default is false, but Kubespray often sets `no_log: "{{ not (unsafe_show_logs | bool) }}"`, so the effective default is hidden.
@@ -672,9 +675,9 @@ Copy your prepared **group_vars** into place:
 
 
 
-Run the deployment:
+Run the deployment at the root directory of the Kubespray project:
 ```bash
-ansible-playbook -i inventory/mycluster/inventory.ini -b cluster.yml -vv
+ansible-playbook -i inventory/shahkar/inventory.ini -e "@hardening.yaml" -b cluster.yml -vv
 ```
 
 If everything completes successfully, the output should look like the following—no failures.
@@ -687,6 +690,8 @@ Saturday 16 August 2025  22:24:24 -0400 (0:00:00.035)       0:05:21.119 *******
 
 PLAY RECAP *****************************************************************************************************************************************************************************************************************************
 master1                    : ok=510  changed=48   unreachable=0    failed=0    skipped=882  rescued=0    ignored=1
+master2                    : ok=510  changed=48   unreachable=0    failed=0    skipped=882  rescued=0    ignored=1
+master3                    : ok=510  changed=48   unreachable=0    failed=0    skipped=882  rescued=0    ignored=1
 worker1                    : ok=323  changed=24   unreachable=0    failed=0    skipped=533  rescued=0    ignored=1
 worker2                    : ok=323  changed=24   unreachable=0    failed=0    skipped=533  rescued=0    ignored=1
 
@@ -813,18 +818,17 @@ Expected pods (steady state): apiserver/scheduler/controller-manager on masters;
 
 ## 10) Appendices (effective configurations)
 
-
+[↩ back to YMLs list](#gv-list)
 <a id="gv-hardening"></a>
-### AA.zz) Cluster Hardening Overrides — `hardening.yaml`
+### A) Cluster Hardening Overrides — `hardening.yaml`
 
 We layer security-focused overrides via a single file passed at runtime. It flips **audit logging on**, raises **TLS floors**, enables **admission plugins** (PodSecurity, EventRateLimit, AlwaysPullImages), turns on **encryption at rest**, and hardens **kubelet**. Your base doc keeps networking/mirrors/HAProxy/containers intact; this file just tightens security. 
 
----
 
-#### Copy-paste (create file + run)
+#### Ccreate file + Run
 
 ```bash
-# 1) Create the overrides file next to your playbooks, at the root of the Kubespray project
+# Create the overrides file next to your playbooks, at the root of the Kubespray project
 sudo tee hardening.yaml >/dev/null <<'YAML'
 # Hardening
 ---
@@ -921,11 +925,7 @@ kube_pod_security_use_default: true
 kube_pod_security_default_enforce: restricted
 YAML
 
-# 2) Converge with hardening enabled (inventory path per your doc)
-ansible-playbook -i inventory/shahkar/inventory.ini -e "@hardening.yaml" -b cluster.yml -vv
 ```
-
----
 
 #### Token-by-token breakdown (what/why/safety)
 
@@ -957,7 +957,6 @@ ansible-playbook -i inventory/shahkar/inventory.ini -e "@hardening.yaml" -b clus
 * `ansible-playbook -e "@hardening.yaml"`
   Ansible reads the YAML and overlays these vars for this run only—clean separation from your base group_vars.  
 
----
 
 #### Verification (add to your Post-Install checks)
 
@@ -992,8 +991,6 @@ kubectl -n default delete secret enc-test
 NODE_IP=$(kubectl get node -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
 nc -vz "$NODE_IP" 10255 || echo "10255 closed (good)"
 ```
-
----
 
 #### Rollback / adjustments
 
