@@ -300,42 +300,6 @@ printf "apiserver_loadbalancer_domain_name: 192.168.154.137\napiserver_loadbalan
 * For long uploads / gRPC, bump `timeout client/server` (e.g., `5m`).
 * If you later change master/worker IPs, update this file and restart HAProxy.
 
----
-
-### Verification (add to your “Post-Install Verification”)
-
-```bash
-# API through LB (expect TLS handshake / 403 when unauthenticated)
-curl -vk https://192.168.154.137:6443/ -m 5 || true
-
-# NodePorts via LB
-nc -vz 192.168.154.137 80
-nc -vz 192.168.154.137 443
-nc -vz 192.168.154.137 30088
-
-# kubeconfig should point at the LB now
-kubectl cluster-info
-```
-
-* Your topology section already defines the HAProxy role on `192.168.154.137` and describes forwarding for 6443/80/443—this test validates that wiring. 
-
----
-
-### Rollback
-
-```bash
-# stop LB quickly
-sudo systemctl stop haproxy
-
-# restore previous config if needed
-sudo cp /etc/haproxy/haproxy.cfg.bak /etc/haproxy/haproxy.cfg && sudo systemctl restart haproxy
-
-# close ports if you opened them just for this test
-sudo firewall-cmd --permanent --remove-port=6443/tcp
-sudo firewall-cmd --permanent --remove-port=30088/tcp
-sudo firewall-cmd --reload
-```
-
 
 
 ---
@@ -792,15 +756,72 @@ kubectl -n kube-system delete deploy -l k8s-app=dns-autoscaler --ignore-not-foun
 ## 8) Post‑Install Verification
 
 ```bash
+# 2) Cluster Status
 kubectl get nodes -o wide
 kubectl -n kube-system get pods -o wide
 kubectl -n kube-system get ds,deploy | awk 'NR==1 || /cilium|coredns|kube-/'
-# Container runtime
+# 2) Container runtime
 crictl info | head
 ctr -n k8s.io images ls | head
-# DNS sanity
+# 3) DNS sanity
 kubectl -n kube-system get svc kube-dns
 kubectl run -it --rm --image=busybox:1.36 --restart=Never dns-test -- nslookup kubernetes.default
+
+# 4) Cilium core components
+kubectl -n kube-system get ds cilium
+kubectl -n kube-system get deploy cilium-operator
+
+# 5) All pods Ready?
+kubectl -n kube-system get pods -l k8s-app=cilium
+kubectl -n kube-system get pods -l k8s-app=cilium-operator
+
+# 6) Quick dataplane smoke test
+kubectl run -n default -it --rm t1 --image=busybox:1.36 --restart=Never -- \
+  sh -c 'ip a; nslookup kubernetes.default || true'
+
+# 7) If kube-proxy kept + strict replacement used, watch for errors:
+kubectl -n kube-system get ds kube-proxy || echo "kube-proxy disabled (OK for strict replacement)"
+
+# 8) API through LB (expect TLS handshake / 403 when unauthenticated)
+curl -vk https://192.168.154.137:6443/ -m 5 || true
+
+# 9) NodePorts via LB
+nc -vz 192.168.154.137 80
+nc -vz 192.168.154.137 443
+nc -vz 192.168.154.137 30088
+
+# 10) kubeconfig should point at the LB now
+kubectl cluster-info
+
+# 11) Audit file exists and logs requests
+sudo ls -lh /var/log/kube-apiserver-log.json
+sudo tail -n2 /var/log/kube-apiserver-log.json
+
+# 12) API server flags include admission config & encryption provider & TLS floor
+ps aux | grep kube-apiserver | grep -E -- '--admission-control-config-file|--encryption-provider-config|--tls-min-version|--authorization-mode'
+
+# 13) EventRateLimit config actually mounted
+kubectl get --raw /configz | jq -r '.admissionControlConfiguration' | head || true
+
+# 14) PSA 'restricted' enforced for new namespaces (privileged pod should be denied)
+kubectl create ns psa-test
+kubectl -n psa-test apply -f - <<'EOF'
+apiVersion: v1
+kind: Pod
+metadata: { name: p, annotations: { 'container.apparmor.security.beta.kubernetes.io/pod': 'unconfined' } }
+spec: { containers: [ { name: c, image: busybox:1.36, securityContext: { privileged: true }, command: [ "sh","-c","sleep 3600" ] } ] }
+EOF
+# expect denial; then cleanup:
+kubectl delete ns psa-test --ignore-not-found
+
+# 15) Encryption at rest: new secret not visible in etcd strings
+kubectl -n default create secret generic enc-test --from-literal=k=v$RANDOM
+sudo strings /var/lib/etcd/member/snap/db | grep -m1 'enc-test' || echo "OK: not visible in plaintext"
+kubectl -n default delete secret enc-test
+
+# 16) Kubelet hardened: 10255 should be closed
+NODE_IP=$(kubectl get node -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
+nc -vz "$NODE_IP" 10255 || echo "10255 closed (good)"
 ```
 
 Expected pods (steady state): apiserver/scheduler/controller-manager on masters; etcd on masters; coredns (2 replicas by default); cilium-node on each node; kube-proxy on each node; cilium-operator.
@@ -957,40 +978,6 @@ YAML
 * `ansible-playbook -e "@hardening.yaml"`
   Ansible reads the YAML and overlays these vars for this run only—clean separation from your base group_vars.  
 
-
-#### Verification (add to your Post-Install checks)
-
-```bash
-# 1) Audit file exists and logs requests
-sudo ls -lh /var/log/kube-apiserver-log.json
-sudo tail -n2 /var/log/kube-apiserver-log.json
-
-# 2) API server flags include admission config & encryption provider & TLS floor
-ps aux | grep kube-apiserver | grep -E -- '--admission-control-config-file|--encryption-provider-config|--tls-min-version|--authorization-mode'
-
-# 3) EventRateLimit config actually mounted
-kubectl get --raw /configz | jq -r '.admissionControlConfiguration' | head || true
-
-# 4) PSA 'restricted' enforced for new namespaces (privileged pod should be denied)
-kubectl create ns psa-test
-kubectl -n psa-test apply -f - <<'EOF'
-apiVersion: v1
-kind: Pod
-metadata: { name: p, annotations: { 'container.apparmor.security.beta.kubernetes.io/pod': 'unconfined' } }
-spec: { containers: [ { name: c, image: busybox:1.36, securityContext: { privileged: true }, command: [ "sh","-c","sleep 3600" ] } ] }
-EOF
-# expect denial; then cleanup:
-kubectl delete ns psa-test --ignore-not-found
-
-# 5) Encryption at rest: new secret not visible in etcd strings
-kubectl -n default create secret generic enc-test --from-literal=k=v$RANDOM
-sudo strings /var/lib/etcd/member/snap/db | grep -m1 'enc-test' || echo "OK: not visible in plaintext"
-kubectl -n default delete secret enc-test
-
-# 6) Kubelet hardened: 10255 should be closed
-NODE_IP=$(kubectl get node -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
-nc -vz "$NODE_IP" 10255 || echo "10255 closed (good)"
-```
 
 #### Rollback / adjustments
 
