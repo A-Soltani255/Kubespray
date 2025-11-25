@@ -292,7 +292,7 @@ printf "apiserver_loadbalancer_domain_name: 192.168.154.137\napiserver_loadbalan
   * **Safety:** ensure those controller/worker IPs are reachable from 192.168.154.137.
 * `sed -i` lines + `printf … | tee -a`
 
-  * Ensures `apiserver_loadbalancer_domain_name: 192.168.154.137` and `apiserver_loadbalancer_port: 6443` are present; kubeconfig will point to the LB. Your SAN list already includes `192.168.154.137`; just clarify its comment to “LB/HAProxy IP.” 
+  * Ensures `apiserver_loadbalancer_domain_name: 192.168.154.137` and `apiserver_loadbalancer_port: 6443` are present; kubeconfig will point to the LB. Just clarify its comment to “LB/HAProxy IP.” 
 
 **Common pitfalls**
 
