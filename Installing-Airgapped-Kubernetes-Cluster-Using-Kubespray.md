@@ -155,6 +155,10 @@ With this foundation, you can move straight into the procedural sections and bui
 
 HAProxy provides a single, stable control-plane endpoint and L4 pass-through for app NodePorts. In this setup, HAProxy runs **on the same VM as Kubespray** (`192.168.154.137`). 
 
+I only used a single HAProxy here to keep this scenario closer to reality. I didn’t implement HAProxy with Keepalived when I set up this scenario multiple times, because all of that infrastructure was using a VIP, so I didn’t need to load balance requests to the master and worker nodes. Instead, I asked the network administrator to forward the requests as follows: traffic to VIP port 6443 → master nodes on port 6443, VIP port 443 → worker nodes on port 30081, and VIP port 80 → worker nodes on port 30080.
+
+So, you should first decide whether you already have any technology in place to forward these requests, and then decide whether you need to use HAProxy/Keepalived or not.
+
 ### Do on 192.168.154.137
 
 ```bash
