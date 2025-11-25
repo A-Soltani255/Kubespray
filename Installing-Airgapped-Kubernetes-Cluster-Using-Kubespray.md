@@ -155,7 +155,7 @@ With this foundation, you can move straight into the procedural sections and bui
 
 HAProxy provides a single, stable control-plane endpoint and L4 pass-through for app NodePorts. In this setup, HAProxy runs **on the same VM as Kubespray** (`192.168.154.137`). 
 
-I only used a single HAProxy here to keep this scenario closer to reality. I didn’t implement HAProxy with Keepalived when I set up this scenario multiple times, because all of that infrastructure was using a VIP, so I didn’t need to load balance requests to the master and worker nodes. Instead, I asked the network administrator to forward the requests as follows: traffic to VIP port 6443 → master nodes on port 6443, VIP port 443 → worker nodes on port 30081, and VIP port 80 → worker nodes on port 30080.
+I only used a single HAProxy here to keep this scenario closer to reality. I didn’t implement HAProxy with Keepalived when I set up this scenario multiple times, because all of that infrastructure was using a VIP, so I didn’t need to load balance requests to the master and worker nodes. Instead, I asked the network administrator to forward the requests as follows: traffic to VIP port 6443 → master nodes on port 6443, VIP port 443 → worker nodes on port 30081, VIP port 80 → worker nodes on port 30080, and VIP port 30088 → worker nodes on port 30088.
 
 So, you should first decide whether you already have any technology in place to forward these requests, and then decide whether you need to use HAProxy/Keepalived or not.
 
@@ -222,31 +222,31 @@ frontend fe_30088
 backend be_k8s_api
     balance roundrobin
     option  tcp-check
-    server master1 192.168.59.20:6443 check
-    server master2 192.168.59.41:6443 check
-    server master3 192.168.59.70:6443 check
+    server master1 192.168.154.131:6443 check
+    server master2 192.168.154.132:6443 check
+    server master3 192.168.154.134:6443 check
 
 # Workers HTTPS NodePort (usually ingress HTTPS)
 backend be_https_nodeport
     balance roundrobin
     option  tcp-check
-    server worker1 192.168.59.21:30081 check
-    server worker2 192.168.59.22:30081 check
+    server worker1 192.168.154.135:30081 check
+    server worker2 192.168.154.136:30081 check
 
 # Workers HTTP NodePort (usually ingress HTTP)
 backend be_http_nodeport
     balance roundrobin
     option  tcp-check
-    server worker1 192.168.59.21:30080 check
-    server worker2 192.168.59.22:30080 check
+    server worker1 192.168.154.135:30080 check
+    server worker2 192.168.154.136:30080 check
 
 # Workers on NodePort 30088
 backend be_30088_nodeport
     balance roundrobin
     option  tcp-check
     default-server inter 5s fall 3 rise 2
-    server worker1 192.168.59.21:30088 check
-    server worker2 192.168.59.22:30088 check
+    server worker1 192.168.154.135:30088 check
+    server worker2 192.168.154.136:30088 check
 EOF
 
 # 4) Restart and check status
