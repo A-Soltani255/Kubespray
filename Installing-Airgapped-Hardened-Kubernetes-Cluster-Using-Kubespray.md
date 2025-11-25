@@ -4,7 +4,8 @@ _Last updated: 2025-11-25 13:55:51 UTC_
 
 
 ## Introduction:
-This document documents—end-to-end—how to build and operate a Kubernetes 1.32.5 cluster on Rocky Linux 9 in a fully air-gapped (offline) environment using Kubespray and Sonatype Nexus. It is written from a real, working deployment and includes all practical details you need to reproduce the outcome: mirroring RPMs and container images, staging Kubernetes binaries, teaching containerd to use your HTTP registry mirrors, pinning versions, disabling non-essential add-ons, and validating the final cluster.
+This document distills the experience I gained from building this scenario multiple times: a Kubernetes 1.32.5 cluster on Rocky Linux 9 in a fully air-gapped (offline) environment using Kubespray and Sonatype Nexus. It is based on repeated, real deployments and focuses on the meaningful, hard-earned details that matter in practice: mirroring RPMs and container images, staging Kubernetes binaries, configuring containerd with HTTP registry mirrors, pinning versions, disabling non-essential add-ons, and validating the final cluster.
+My goal is to give you a reproducible, opinionated path that reflects what actually worked in practice—not just theory.
 
 The environment used throughout:
 - Control planes: master1 (`192.168.154.131`) master2 (`192.168.154.132`) master3 (`192.168.154.134`)
