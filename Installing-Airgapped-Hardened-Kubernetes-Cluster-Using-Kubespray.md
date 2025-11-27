@@ -389,9 +389,20 @@ dnf install -y python3.12 python3.12-pip
 alternatives --install /usr/bin/python3 python /usr/bin/python3.12 10
 alternatives --install /usr/bin/python3 python /usr/bin/python3.9 20
 
+alternatives --config python
+
+# There are 2 programs which provide 'python'.
+# 
+#   Selection    Command
+# -----------------------------------------------
+#    1           /usr/bin/python3.12
+# *+ 2           /usr/bin/python3.9
+# 
+# Enter to keep the current selection[+], or type selection number: 1
+
 dnf install -y ansible
 
-python3 -m venv /opt/ks-venv
+python -m venv /opt/ks-venv
 source /opt/ks-venv/bin/activate
 
 pip install --upgrade pip
