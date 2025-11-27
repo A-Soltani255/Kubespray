@@ -1,36 +1,101 @@
-# Air-gapped Hardened Kubernetes Cluster with Kubespray
+# Air-gapped & Hardened Kubernetes Cluster with Kubespray
 
-This repository contains a step-by-step guide for building a production-grade Kubernetes cluster in an air-gapped, security-focused environment using [Kubespray](https://github.com/kubernetes-sigs/kubespray).
+This repository contains a detailed, practical runbook for building a **production-style, air-gapped, hardened Kubernetes cluster** using [Kubespray](https://github.com/kubernetes-sigs/kubespray).
 
-📄 **Main document**  
-[`Installing-Airgapped-Hardened-Kubernetes-Cluster-Using-Kubespray.md`](./Installing-Airgapped-Hardened-Kubernetes-Cluster-Using-Kubespray.md)
+📄 **Main document (start here)**  
+👉 [Installing Air-gapped Hardened Kubernetes Cluster Using Kubespray](./Installing-Airgapped-Hardened-Kubernetes-Cluster-Using-Kubespray.md)
 
-## What this guide covers
+---
 
-- Preparing Linux nodes for a multi-node Kubernetes cluster
-- Designing and deploying a highly available control plane
-- Building offline package and container registries for air-gapped installs
-- Deploying Kubernetes with Kubespray using a custom CNI
-- Hardening steps and basic post-install validation
+## What this project is
 
-The focus is on practical, repeatable steps that can be used as a runbook in enterprise environments.
+This is not a generic “hello k8s” guide.
 
-## Who this is for
+It is a **real-world scenario** written as a step-by-step document:
 
-- DevOps / SRE / Platform engineers working in restricted or offline networks
-- Teams that want to standardise how they bring up Kubernetes clusters with Kubespray
-- Anyone looking for a detailed, narrative guide rather than a minimal quick-start
+- Installing and preparing Linux nodes for a multi-node Kubernetes cluster
+- Designing and deploying a **highly available control plane**
+- Working in an **air-gapped / restricted network**
+- Building and using:
+  - Local OS package repositories
+  - A private container registry
+- Deploying Kubernetes with **Kubespray** and a custom CNI
+- Applying opinionated **hardening** and doing post-install **health checks**
 
-## How to use
+Think of it as a **runbook** you can hand to another engineer and they can follow it end-to-end.
 
-1. Start with the main document:  
-   - [Open the full guide](./Installing-Airgapped-Hardened-Kubernetes-Cluster-Using-Kubespray.md)
-2. Follow the sections in order on a fresh set of nodes.
-3. Adapt IP addresses, hostnames, and capacity planning to your own environment.
-4. Use this repository as a reference in your CV / LinkedIn to demonstrate hands-on work with:
-   - Air-gapped Kubernetes
-   - Kubespray
-   - Cluster hardening and operational practices
+---
+
+## Skills demonstrated
+
+This repo is meant to showcase concrete DevOps / SRE skills around Kubernetes:
+
+- **Cluster provisioning**
+  - Using Kubespray to deploy a multi-node, HA cluster
+  - Customising inventory and group variables for your own topology
+
+- **Air-gapped operations**
+  - Mirroring OS repositories and container images
+  - Using internal registries instead of direct internet access
+
+- **Security & hardening**
+  - Baseline hardening for the OS and Kubernetes components
+  - Reducing exposure in a restricted environment
+
+- **Operations & reliability**
+  - Verifying cluster health after install
+  - Thinking in terms of repeatable procedures, not one-off commands
+
+---
+
+## How to use this repository
+
+1. Open the main guide:  
+   👉 [Installing Air-gapped Hardened Kubernetes Cluster Using Kubespray](./Installing-Airgapped-Hardened-Kubernetes-Cluster-Using-Kubespray.md)
+
+2. Read the **assumptions/prerequisites** section and adapt:
+   - OS family and version
+   - Node IPs and hostnames
+   - Network/firewall rules
+   - Storage layout
+
+3. Follow the steps in order on a **lab or test environment** first.
+
+4. Once you’re comfortable with the flow, adapt:
+   - Inventory files
+   - Group vars
+   - Registry / repository endpoints  
+   to match your own organisation’s standards.
+
+---
+
+## Using this in a portfolio / LinkedIn context
+
+This repository is intentionally documentation-focused so that reviewers can see:
+
+- How you **structure and document** a complex technical procedure
+- That you understand:
+  - Air-gapped / offline constraints
+  - HA Kubernetes cluster design
+  - Kubespray-based provisioning
+  - Security and operational considerations
+
+You can link directly to this repo from LinkedIn or your CV to demonstrate **hands-on Kubernetes platform engineering**, not just theory.
+
+---
+
+## Repository contents
+
+Current:
+
+- `Installing-Airgapped-Hardened-Kubernetes-Cluster-Using-Kubespray.md`  
+  End-to-end runbook for building an air-gapped, hardened Kubernetes cluster with Kubespray.
+
+Planned (future) additions:
+
+- Example inventories and group vars
+- Helper scripts and one-liners
+- Diagrams and troubleshooting appendices
 
 ---
 
