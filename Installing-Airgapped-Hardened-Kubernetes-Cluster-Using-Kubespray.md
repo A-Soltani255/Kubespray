@@ -418,8 +418,8 @@ tar cvfz pypi.tar.gz ./pip-req
 cd /opt/kubespray/contrib/offline
 ./generate_list.sh             # creates ./tmp/files.list and ./tmp/images.list files
 ```
-<a id="dowloader-scripts-list"></a>
-- [`./files.sh`](#download-files)                               # downloads all required binaries per files.list
+
+- [`./files.sh`](./Scripts, appendices and Configurations/files.sh)                               # downloads all required binaries per files.list
 - [`./images.sh`](#download-images)                             # pulls & saves container images listed in images.list
 - [`./images-test.sh`](#download-left-over-images)              # optional validation of saved images and download the leftover images
 
