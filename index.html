@@ -1,15 +1,189 @@
-# Air-gapped & Hardened Kubernetes Cluster with Kubespray
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Air-gapped Hardened Kubernetes Cluster with Kubespray</title>
+  <meta name="description" content="Runbook and supporting material for building an air-gapped, hardened, highly available Kubernetes cluster with Kubespray in air-gapped environments.">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-This is a documentation-first project that walks through building an air-gapped, hardened, highly available Kubernetes cluster using **Kubespray**.
+  <!-- Optional: Google Search Console verification -->
+  <!-- <meta name="google-site-verification" content="PASTE_YOUR_TOKEN_HERE" /> -->
 
-📄 **Full runbook and supporting material are here on GitHub:**
+  <style>
+    :root {
+      color-scheme: dark light;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.6;
+      background: #050816;
+      color: #e5e7eb;
+    }
+    a {
+      color: #38bdf8;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    .page {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem 3rem;
+    }
+    header h1 {
+      font-size: 2.1rem;
+      margin-bottom: 0.25rem;
+    }
+    header p {
+      margin-top: 0.25rem;
+      color: #9ca3af;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.78rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      border: 1px solid #374151;
+      color: #9ca3af;
+      margin-bottom: 1rem;
+    }
+    .badge-dot {
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 999px;
+      background: #22c55e;
+    }
+    h2 {
+      margin-top: 2rem;
+      margin-bottom: 0.6rem;
+      font-size: 1.3rem;
+    }
+    ul {
+      padding-left: 1.1rem;
+    }
+    li {
+      margin-bottom: 0.2rem;
+    }
+    .card {
+      border-radius: 0.75rem;
+      border: 1px solid #1f2933;
+      background: radial-gradient(circle at top, #111827 0, #020617 55%);
+      padding: 1.25rem 1.4rem;
+      margin-top: 1.2rem;
+    }
+    .card-title {
+      font-weight: 600;
+      margin-bottom: 0.4rem;
+    }
+    .primary-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-top: 0.8rem;
+      padding: 0.5rem 0.9rem;
+      border-radius: 999px;
+      border: 1px solid #38bdf8;
+      background: rgba(56, 189, 248, 0.1);
+      font-size: 0.95rem;
+    }
+    .primary-link span {
+      font-size: 1.1rem;
+    }
+    footer {
+      margin-top: 3rem;
+      font-size: 0.8rem;
+      color: #6b7280;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <div class="badge">
+        <span class="badge-dot"></span>
+        <span>DevOps / Kubernetes Platform Engineering</span>
+      </div>
+      <h1>Air-gapped &amp; Hardened Kubernetes Cluster with Kubespray</h1>
+      <p>
+        A documentation-first project that walks through building an air-gapped, hardened,
+        highly available Kubernetes cluster using Kubespray, with real-world constraints and
+        operational details.
+      </p>
+    </header>
 
-👉 [Kubespray – Air-gapped Hardened Cluster Repository](https://github.com/A-Soltani255/Kubespray)
+    <section>
+      <h2>What this project is about</h2>
+      <p>
+        Many Kubernetes examples assume full Internet access and a simple single-node cluster.
+        This project is based on a more realistic scenario:
+      </p>
+      <ul>
+        <li>No direct Internet access from Kubernetes nodes (air-gapped environment)</li>
+        <li>Multi-node cluster with a highly available control plane</li>
+        <li>Local OS package repositories and a private container registry</li>
+        <li>Opinionated hardening and post-install validation</li>
+        <li>A reusable runbook that other engineers can follow end-to-end</li>
+      </ul>
+    </section>
 
-## What this covers
+    <section class="card">
+      <div class="card-title">Explore the full runbook &amp; configuration</div>
+      <p>
+        The GitHub repository contains:
+      </p>
+      <ul>
+        <li>
+          <strong>Main runbook:</strong>
+          <code>Installing-Airgapped-Hardened-Kubernetes-Cluster-Using-Kubespray.md</code>
+        </li>
+        <li>
+          <strong>Scripts, appendices and Configurations/</strong> – example inventories,
+          group vars, helper scripts and troubleshooting notes
+        </li>
+        <li>
+          Architecture and operational guidance for bringing up the cluster in an
+          air-gapped environment
+        </li>
+      </ul>
+      <a class="primary-link" href="https://github.com/A-Soltani255/Kubespray" target="_blank" rel="noopener">
+        <span>➜</span>
+        <span>Open the GitHub repository</span>
+      </a>
+    </section>
 
-- Multi-node Kubernetes cluster with a highly available control plane
-- Air-gapped environment (no direct Internet access from nodes)
-- Local OS repositories and private container registry
-- Hardening steps and post-install validation
-- Example inventories, group vars, helper scripts, and diagrams
+    <section>
+      <h2>Skills demonstrated</h2>
+      <ul>
+        <li>Kubernetes cluster provisioning with <strong>Kubespray</strong></li>
+        <li>Designing and operating <strong>air-gapped</strong> clusters</li>
+        <li>High-availability control plane design</li>
+        <li>Private container registry &amp; internal OS repositories</li>
+        <li>Security hardening and operational runbooks</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Getting started</h2>
+      <p>
+        To dive into the details, start with the main runbook in the GitHub repository and
+        adapt the inventories, group vars and scripts to your own environment
+        (IP addressing, OS version, storage, network policies, etc.).
+      </p>
+    </section>
+
+    <footer>
+      <p>
+        This site is published via GitHub Pages for discoverability and as a simple landing
+        page for the Kubespray air-gapped cluster project.
+      </p>
+    </footer>
+  </div>
+</body>
+</html>
