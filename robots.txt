@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://a-soltani255.github.io/Kubespray/sitemap.xml
