@@ -1,4 +1,4 @@
-### A) Cluster Hardening Overrides — `hardening.yaml`
+### Cluster Hardening Overrides — `hardening.yaml`
 
 We layer security-focused overrides via a single file passed at runtime. It flips **audit logging on**, raises **TLS floors**, enables **admission plugins** (PodSecurity, EventRateLimit, AlwaysPullImages), turns on **encryption at rest**, and hardens **kubelet**. Your base doc keeps networking/mirrors/HAProxy/containers intact; this file just tightens security. 
 
