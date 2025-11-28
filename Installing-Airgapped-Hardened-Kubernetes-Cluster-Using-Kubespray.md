@@ -500,10 +500,11 @@ cd /opt/kubespray/contrib/offline
 
      # Add to /usr/lib/systemcd/system/docker.service file on ExecStart section(drop-in file):
      #   --insecure-registry=192.168.154.133:5000 --insecure-registry=192.168.154.133:5001 --insecure-registry=192.168.154.133:5002 --insecure-registry=192.168.154.133:5003
+     
+     for h in 5000 5001 5002 5003; do docker login 192.168.154.133:$h; done
      systemctl daemon-reload
      systemctl restart docker
 
-     for h in 5000 5001 5002 5003; do docker login 192.168.154.133:$h; done
      ```
      
    - Load & retag & push:
