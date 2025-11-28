@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Air-gapped Hardened Kubernetes Cluster with Kubespray</title>
+  <title># Building Air-gapped / Offline, Hardened Kubernetes Clusters with Kubespray</title>
   <meta name="description" content="Runbook and supporting material for building an air-gapped, hardened, highly available Kubernetes cluster with Kubespray in air-gapped environments.">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
@@ -122,16 +122,45 @@
       <h2>What this project is about</h2>
       <p>
         Many Kubernetes examples assume full Internet access and a simple single-node cluster.
-        This project is based on a more realistic scenario:
+        This project focuses on <strong>clusters with little or no Internet connectivity</strong>
       </p>
       <ul>
-        <li>No direct Internet access from Kubernetes nodes (air-gapped environment)</li>
-        <li>Multi-node cluster with a highly available control plane</li>
-        <li>Local OS package repositories and a private container registry</li>
+        <li>Fully <strong>air-gapped clusters</strong> with no direct Internet access from Kubernetes nodes</li>
+        <li><strong>Offline / disconnected clusters</strong> where you install and operate Kubernetes using internal package repositories and a private container registry</li>
+        <li>Multi-node clusters with a highly available control plane</li>
         <li>Opinionated hardening and post-install validation</li>
         <li>A reusable runbook that other engineers can follow end-to-end</li>
       </ul>
     </section>
+
+<section>
+  <h2>Air-gapped vs. Offline – what do we mean?</h2>
+
+  <p>
+    In this project I use two related terms:
+  </p>
+
+  <h3>Offline / disconnected Kubernetes cluster</h3>
+  <p>
+    A cluster that is installed and operated without relying on direct Internet access.
+    All OS packages and container images are served from internal mirrors and registries.
+  </p>
+
+  <h3>Air-gapped Kubernetes cluster</h3>
+  <p>
+    A stricter version of the same idea, where the cluster nodes have
+    <strong>no routable path to the public Internet</strong> at all.
+    All updates, images and packages must be brought in via bastion hosts, USB,
+    or other controlled paths.
+  </p>
+
+  <p>
+    The runbook and configs in this repo work for <strong>both</strong>:
+    you can use them as-is for strict air-gapped environments,
+    or adapt them for “just offline” clusters that occasionally sync from an upstream mirror.
+  </p>
+</section>
+
 
     <section class="card">
       <div class="card-title">Explore the full runbook &amp; configuration</div>
