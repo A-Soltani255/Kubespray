@@ -400,8 +400,6 @@ alternatives --config python
 # 
 # Enter to keep the current selection[+], or type selection number: 1
 
-dnf install -y ansible
-
 python -m venv /opt/ks-venv
 source /opt/ks-venv/bin/activate
 
