@@ -2,12 +2,55 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Building Air-gapped, Offline &amp; Hardened Kubernetes Clusters with Kubespray</title>
-  <meta name="description" content="Runbook and supporting material for building an air-gapped, hardened, highly available Kubernetes cluster with Kubespray in air-gapped environments.">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Air-gapped, Offline & Hardened Kubernetes Cluster with Kubespray (Runbook)</title>
 
-  <!-- Optional: Google Search Console verification -->
-  <!-- <meta name="google-site-verification" content="PASTE_YOUR_TOKEN_HERE" /> -->
+  <meta name="description" content="Step-by-step runbook for building an air-gapped, offline, hardened, highly available Kubernetes cluster using Kubespray, private container registries and internal OS repositories in restricted environments.">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="index,follow">
+
+  <!-- Canonical URL helps avoid duplicate-content confusion -->
+  <link rel="canonical" href="https://a-soltani255.github.io/Kubespray/">
+
+  <!-- Open Graph (for social / rich link previews) -->
+  <meta property="og:title" content="Air-gapped, Offline & Hardened Kubernetes Cluster with Kubespray">
+  <meta property="og:description" content="Runbook and supporting material for building an air-gapped, offline, hardened, highly available Kubernetes cluster using Kubespray, private registries and internal OS mirrors.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://a-soltani255.github.io/Kubespray/">
+  <!-- If you create an image at this path, keep this line; otherwise you can delete it -->
+  <meta property="og:image" content="https://a-soltani255.github.io/Kubespray/og-image.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Air-gapped, Offline & Hardened Kubernetes Cluster with Kubespray">
+  <meta name="twitter:description" content="Step-by-step runbook for building an air-gapped, offline, hardened, highly available Kubernetes cluster using Kubespray.">
+
+  <!-- Optional: Google Search Console verification
+  <meta name="google-site-verification" content="PASTE_YOUR_TOKEN_HERE" />
+  -->
+
+  <!-- Structured data (helps search engines understand the page) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "Building Air-gapped, Offline & Hardened Kubernetes Clusters with Kubespray",
+    "description": "Step-by-step runbook for building an air-gapped, offline, hardened, highly available Kubernetes cluster using Kubespray, private container registries and internal OS repositories.",
+    "author": {
+      "@type": "Person",
+      "name": "Ali Soltaninasab"
+    },
+    "url": "https://a-soltani255.github.io/Kubespray/",
+    "mainEntityOfPage": "https://a-soltani255.github.io/Kubespray/",
+    "about": [
+      "Kubernetes",
+      "Kubespray",
+      "Air-gapped Kubernetes cluster",
+      "Offline Kubernetes cluster",
+      "DevOps",
+      "SRE"
+    ]
+  }
+  </script>
 
   <style>
     :root {
@@ -123,6 +166,8 @@
       <p>
         Many Kubernetes examples assume full Internet access and a simple single-node cluster.
         This project focuses on <strong>clusters with little or no Internet connectivity</strong>
+        and shows how to run <strong>air-gapped and offline Kubernetes clusters</strong>
+        with Kubespray.
       </p>
       <ul>
         <li>Fully <strong>air-gapped clusters</strong> with no direct Internet access from Kubernetes nodes</li>
@@ -133,52 +178,47 @@
       </ul>
     </section>
 
-<section>
-  <h2>Air-gapped vs. Offline – what do we mean?</h2>
+    <section>
+      <h2>Air-gapped vs. Offline – what do we mean?</h2>
 
-  <p>
-    In this project I use two related terms:
-  </p>
+      <p>In this project I use two related terms:</p>
 
-  <h3>Offline / disconnected Kubernetes cluster</h3>
-  <p>
-    A cluster that is installed and operated without relying on direct Internet access.
-    All OS packages and container images are served from internal mirrors and registries.
-  </p>
+      <h3>Offline / disconnected Kubernetes cluster</h3>
+      <p>
+        A cluster that is installed and operated without relying on direct Internet access.
+        All OS packages and container images are served from internal mirrors and registries.
+      </p>
 
-  <h3>Air-gapped Kubernetes cluster</h3>
-  <p>
-    A stricter version of the same idea, where the cluster nodes have
-    <strong>no routable path to the public Internet</strong> at all.
-    All updates, images and packages must be brought in via bastion hosts, USB,
-    or other controlled paths.
-  </p>
+      <h3>Air-gapped Kubernetes cluster</h3>
+      <p>
+        A stricter version of the same idea, where the cluster nodes have
+        <strong>no routable path to the public Internet</strong> at all.
+        All updates, images and packages must be brought in via bastion hosts, USB,
+        or other controlled paths.
+      </p>
 
-  <p>
-    The runbook and configs in this repo work for <strong>both</strong>:
-    you can use them as-is for strict air-gapped environments,
-    or adapt them for “just offline” clusters that occasionally sync from an upstream mirror.
-  </p>
-</section>
-
+      <p>
+        The runbook and configs in this repo work for <strong>both</strong>:
+        you can use them as-is for strict air-gapped environments,
+        or adapt them for “just offline” clusters that occasionally sync from an upstream mirror.
+      </p>
+    </section>
 
     <section class="card">
       <div class="card-title">Explore the full runbook &amp; configuration</div>
-      <p>
-        The GitHub repository contains:
-      </p>
+      <p>The GitHub repository contains:</p>
       <ul>
         <li>
           <strong>Main runbook:</strong>
           <code>Installing-Airgapped-Hardened-Kubernetes-Cluster-Using-Kubespray.md</code>
         </li>
         <li>
-          <strong>Scripts, appendices and Configurations:</strong> example inventories,
+          <strong>Scripts, appendices and configurations:</strong> example inventories,
           group vars, helper scripts and troubleshooting notes
         </li>
         <li>
           Architecture and operational guidance for bringing up the cluster in an
-          air-gapped environment
+          air-gapped or offline environment
         </li>
       </ul>
       <a class="primary-link" href="https://github.com/A-Soltani255/Kubespray" target="_blank" rel="noopener">
@@ -188,17 +228,15 @@
     </section>
 
     <section>
-  <h2>Skills demonstrated</h2>
-  <ul>
-    <li>Kubernetes cluster provisioning with Kubespray</li>
-    <li>
-      Designing and operating <strong>air-gapped and offline / disconnected clusters</strong>
-    </li>
-    <li>High-availability control plane design</li>
-    <li>Private container registry &amp; internal OS repositories</li>
-    <li>Security hardening and operational runbooks</li>
-  </ul>
-</section>
+      <h2>Skills demonstrated</h2>
+      <ul>
+        <li>Kubernetes cluster provisioning with Kubespray</li>
+        <li>Designing and operating <strong>air-gapped and offline / disconnected clusters</strong></li>
+        <li>High-availability control plane design</li>
+        <li>Private container registry &amp; internal OS repositories</li>
+        <li>Security hardening and operational runbooks</li>
+      </ul>
+    </section>
 
     <section>
       <h2>Getting started</h2>
@@ -207,12 +245,16 @@
         adapt the inventories, group vars and scripts to your own environment
         (IP addressing, OS version, storage, network policies, etc.).
       </p>
+      <p>
+        For a high-level overview, you can also read the accompanying article on Dev.to,
+        which explains the architecture and motivation behind the project.
+      </p>
     </section>
 
     <footer>
       <p>
         This site is published via GitHub Pages for discoverability and as a simple landing
-        page for the Kubespray air-gapped cluster project.
+        page for the Kubespray air-gapped / offline Kubernetes cluster project.
       </p>
     </footer>
   </div>
