@@ -1,6 +1,11 @@
-# Air-gapped & Hardened Kubernetes Cluster with Kubespray
+# Air-gapped, Offline & Hardened Kubernetes Cluster with Kubespray
 
-This repository contains a detailed, practical runbook for building a **production-style, air-gapped, hardened Kubernetes cluster** using [Kubespray](https://github.com/kubernetes-sigs/kubespray).
+This repository contains a detailed, practical runbook for building a
+**production-style, air-gapped, offline, hardened Kubernetes cluster** using
+[Kubespray](https://github.com/kubernetes-sigs/kubespray).
+
+🌐 **Project landing page (GitHub Pages)**  
+👉 https://a-soltani255.github.io/Kubespray/
 
 📄 **Main document (start here)**  
 👉 [Installing Air-gapped Hardened Kubernetes Cluster Using Kubespray](./Installing-Airgapped-Hardened-Kubernetes-Cluster-Using-Kubespray.md)
@@ -9,13 +14,14 @@ This repository contains a detailed, practical runbook for building a **producti
 
 ## What this project is
 
-This is a **real-world scenario** written as a step-by-step document, not just a minimal quick-start.
+This is a **real-world scenario**, written as a step-by-step document – not just a
+minimal quick-start.
 
 The runbook shows how to:
 
 - Install and prepare Linux nodes for a multi-node Kubernetes cluster
 - Design and deploy a **highly available control plane**
-- Work in an **air-gapped / restricted network**
+- Work in an **air-gapped / offline / restricted network**
 - Build and use:
   - Local OS package repositories
   - A private container registry
@@ -51,20 +57,56 @@ That folder currently contains:
 This repo is meant to showcase concrete DevOps / SRE skills around Kubernetes platform engineering:
 
 - **Cluster provisioning**
-  - Using Kubespray to deploy a multi-node, HA Kubernetes cluster
+  - Using Kubespray (e.g. v2.28.0) to deploy a multi-node, HA Kubernetes cluster
   - Customising inventory and group variables for your own topology
 
-- **Air-gapped operations**
+- **Air-gapped & offline operations**
   - Mirroring OS repositories and container images
-  - Using internal registries instead of direct internet access
+  - Using internal registries instead of direct Internet access
+  - Handling “bastion” / transfer hosts for moving artifacts into restricted environments
 
 - **Security & hardening**
   - Baseline hardening for the OS and Kubernetes components
   - Reducing exposure in restricted environments
+  - Safely changing core behaviour such as image pull policies and admission plugins
 
 - **Operations & reliability**
   - Verifying cluster health after install
   - Thinking in terms of repeatable procedures and scripts, not one-off commands
+
+- **Automation & CI/CD (GitLab)**
+  - Wiring a Kubespray-based cluster into GitLab CI/CD
+  - Re-applying Kubespray via pipelines using Ansible tags for specific components (CNI, apps, etc.) :contentReference[oaicite:1]{index=1}  
+
+---
+
+## Deep-dive issues & advanced runbooks
+
+Some of the more advanced procedures are written up as GitHub issues. These act as
+extended runbooks for specific scenarios.
+
+- **[Issue #2 – Removing AlwaysPullImages + Enforcing IfNotPresent](https://github.com/A-Soltani255/Kubespray/issues/2)**  
+  Step-by-step runbook for going from “`AlwaysPullImages` is enabled” to
+  “`AlwaysPullImages` fully removed and `IfNotPresent` under control”, including:
+
+  - Cleaning Kubespray hardening/vars (`kube_apiserver_enable_admission_plugins`, `k8s_image_pull_policy: IfNotPresent`)  
+  - Re-applying `cluster.yml` so kubeadm config is regenerated  
+  - Updating kubeadm config + `kube-apiserver` manifests on each control-plane node  
+  - Verifying that the admission plugin set and pull policy are correct across the cluster :contentReference[oaicite:2]{index=2}  
+
+- **[Issue #3 – GitLab CI/CD for Kubespray-Based Kubernetes Cluster](https://github.com/A-Soltani255/Kubespray/issues/3)**  
+  Full design and implementation guide for integrating this Kubespray project with
+  GitLab CI/CD, including:
+
+  - Keeping Kubespray + inventory in a GitLab project (e.g. `devops/kubespray`)  
+  - Installing a GitLab Runner (binary, shell executor) on the Ansible host  
+  - Defining jobs such as `kubespray-full`, `kubespray-cilium`, `kubespray-custom-cni`, etc.  
+  - Having each job call `ci/run-kubespray.sh`, which runs  
+    `ansible-playbook -i inventory/mycluster/inventory.ini cluster.yml [--tags ...]`  
+  - Using SSH keys from the `gitlab-runner` user to reach all cluster nodes safely :contentReference[oaicite:3]{index=3}  
+
+As the project evolves, additional improvements and day-2 operations may be tracked in
+the [Issues tab](https://github.com/A-Soltani255/Kubespray/issues).
 
 ---
 
@@ -92,6 +134,10 @@ This repo is meant to showcase concrete DevOps / SRE skills around Kubernetes pl
    - Registry / repository endpoints  
    to match your organisation’s standards and security policies.
 
+6. For advanced scenarios:
+   - Use **Issue #2** if you need to change image pull policy / remove `AlwaysPullImages` safely  
+   - Use **Issue #3** if you want to drive Kubespray re-applies via GitLab CI/CD pipelines
+
 ---
 
 ## Using this in a portfolio / LinkedIn context
@@ -103,16 +149,18 @@ This repository is intentionally documentation-heavy and scenario-based so that 
   - Air-gapped / offline constraints
   - HA Kubernetes cluster design with Kubespray
   - Registry and repo mirroring
-  - Basic hardening and operational practices
+  - Baseline hardening and operational practices
+  - CI/CD integration for day-2 cluster changes (via GitLab)
 
-You can link directly to this repo from LinkedIn or your CV to demonstrate **hands-on Kubernetes platform engineering**, not just theory.
+You can link directly to this repo — and to the live GitHub Pages site — from LinkedIn or your CV
+to demonstrate **hands-on Kubernetes platform engineering**, not just theory.
 
 ---
 
 ## Repository structure
 
 - `Installing-Airgapped-Hardened-Kubernetes-Cluster-Using-Kubespray.md`  
-  End-to-end runbook for building the air-gapped, hardened Kubernetes cluster with Kubespray.
+  End-to-end runbook for building the air-gapped, offline, hardened Kubernetes cluster with Kubespray.
 
 - `Scripts, appendices and Configurations/`  
   Supporting material:
