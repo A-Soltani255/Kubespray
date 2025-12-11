@@ -227,6 +227,47 @@
       </a>
     </section>
 
+        <section>
+      <h2>Deep-dive GitHub issues & extended runbooks</h2>
+      <p>
+        Some of the more advanced parts of this project are documented as
+        GitHub issues. These issues act as extended runbooks you can follow
+        step by step.
+      </p>
+      <ul>
+        <li>
+          <a href="https://github.com/A-Soltani255/Kubespray/issues/2"
+             target="_blank" rel="noopener">
+            Issue #2 – Removing AlwaysPullImages + Enforcing IfNotPresent
+          </a>
+          – a detailed runbook for removing the
+          <code>AlwaysPullImages</code> admission plugin and enforcing
+          <code>k8s_image_pull_policy: IfNotPresent</code> with:
+          pre-checks, Kubespray vars cleanup, re-applying
+          <code>cluster.yml</code>, fixing kubeadm config / apiserver
+          manifests on each control-plane node, and final verification.
+        </li>
+        <li>
+          <a href="https://github.com/A-Soltani255/Kubespray/issues/3"
+             target="_blank" rel="noopener">
+            Issue #3 – GitLab CI/CD for Kubespray-Based Kubernetes Cluster
+          </a>
+          – a full design and implementation guide for wiring this
+          Kubespray project into GitLab CI/CD, with a shell runner on the
+          Ansible host and jobs like <code>kubespray-full</code>,
+          <code>kubespray-cilium</code> and <code>kubespray-custom-cni</code>
+          that call <code>ci/run-kubespray.sh</code> and pass Ansible tags
+          to re-apply Kubespray safely to the existing cluster.
+        </li>
+      </ul>
+      <p>
+        These deep-dive issues complement the main runbook by covering
+        day-2 operations such as reconfiguring admission plugins and
+        automating Kubespray re-applies through GitLab pipelines.
+      </p>
+    </section>
+
+
     <section>
       <h2>Skills demonstrated</h2>
       <ul>
