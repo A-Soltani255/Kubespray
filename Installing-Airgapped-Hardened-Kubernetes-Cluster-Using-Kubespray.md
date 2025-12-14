@@ -413,6 +413,7 @@ tar cvfz pypi.tar.gz ./pip-req
 
 ### 2.4 Generate offline lists from Kubespray and download everything
 ```bash
+dnf install ansible -y
 cd /opt/kubespray/contrib/offline
 ./generate_list.sh             # creates ./tmp/files.list and ./tmp/images.list files
 ```
@@ -588,7 +589,6 @@ alternatives --config python
 #
 #   Enter to keep the current selection[+], or type selection number: 1
 
-dnf install -y ansible
 python -m venv /opt/ks-venv
 source /opt/ks-venv/bin/activate
 python3.12 -m pip install --no-index --find-links /opt/pip-req -r /opt/kubespray-2.28.0/requirements.txt
