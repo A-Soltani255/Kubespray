@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The NEXUS_REPO value on this script should be exactly like the images.sh script
 NEXUS_REPO="192.168.10.1:4000/kubespray"
-IMAGES_LIST="/opt/kubespray/images.list"
+IMAGES_LIST="/opt/kubespray/contrib/offline/tmp/images.list"
 OUT="/opt/missing_images.txt"
 
 mapfile -t missing < <(
