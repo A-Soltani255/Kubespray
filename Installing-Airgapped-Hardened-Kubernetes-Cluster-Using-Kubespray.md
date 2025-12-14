@@ -636,10 +636,11 @@ EOF
 
 Copy your prepared **group_vars** into place:
 
-- [kubespray-2.28.0/inventory/mycluster/group_vars/offline.yml](./Scripts,%20appendices%20and%20Configurations/offline-yml.md)
-- [kubespray-2.28.0/inventory/mycluster/group_vars/k8s-cluster.yml](./Scripts,%20appendices%20and%20Configurations/k8s-cluster-yml.md)
+- [kubespray-2.28.0/inventory/mycluster/group_vars/k8s_cluster/k8s-cluster.yml](./Scripts,%20appendices%20and%20Configurations/k8s-cluster-yml.md)
 - [kubespray-2.28.0/inventory/shahkar/group_vars/k8s_cluster/k8s-net-custom-cni.yml](./Scripts,%20appendices%20and%20Configurations/k8s-net-custom-cni-yml.md)
-- [kubespray-2.28.0/inventory/mycluster/group_vars/containerd.yml](./Scripts,%20appendices%20and%20Configurations/containerd-yml.md)
+- [kubespray-2.28.0/inventory/mycluster/group_vars/all/containerd.yml](./Scripts,%20appendices%20and%20Configurations/containerd-yml.md)
+- [kubespray-2.28.0/inventory/mycluster/group_vars/all/all.yml](./Scripts,%20appendices%20and%20Configurations/containerd-yml.md)
+- [kubespray-2.28.0/inventory/mycluster/group_vars/all/offline.yml](./Scripts,%20appendices%20and%20Configurations/offline-yml.md)
 
 Also create your prepared **hardening.yaml** file in the root directory of the Kubespray project.
 - [kubespray-2.28.0/hardening.yaml](./Scripts,%20appendices%20and%20Configurations/hardening-yaml.md)
