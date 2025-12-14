@@ -3,7 +3,7 @@ set -euo pipefail
 
 # ---- config ----
 IMAGES_DIR="${1:-/opt/container-images}"             # directory of *.tar or *.tar.gz
-SRC_HUB="192.168.154.133:4000"                       # where they were originally tagged from
+SRC_HUB="192.168.10.1:4000"                       # where they were originally tagged from
 SRC_NS="kubespray"                                   # prefix after SRC_HUB (present in your names)
 CLI="${CLI:-docker}"                                 # use 'docker' (default) or set CLI=nerdctl
 PUSH="${PUSH:-0}"                                    # set PUSH=1 to push after retag
