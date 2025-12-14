@@ -403,6 +403,7 @@ alternatives --config python
 python -m venv /opt/ks-venv
 source /opt/ks-venv/bin/activate
 
+
 pip install --upgrade pip
 pip download -r /opt/kubespray/requirements.txt -d /opt/pip-req
 pip download twine -d /opt/pip-req
@@ -588,6 +589,8 @@ alternatives --config python
 #   *+ 2           /usr/bin/python3.9
 #
 #   Enter to keep the current selection[+], or type selection number: 1
+
+### Transfer the pip-req.tar.gz which you provided earlier at your internet machine to your Kubespray machine and extract it here in the /opt directory.
 
 python -m venv /opt/ks-venv
 source /opt/ks-venv/bin/activate
