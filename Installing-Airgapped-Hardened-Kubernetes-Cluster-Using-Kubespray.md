@@ -255,13 +255,13 @@ sudo systemctl restart haproxy
 sudo systemctl status haproxy --no-pager
 
 # 5) Point Kubernetes at the LB (Kubespray group_vars)
-#    Ensure these are present in inventory/mycluster/group_vars/k8s_cluster/k8s-cluster.yml
-sudo sed -i '/^apiserver_loadbalancer_domain_name:/d' inventory/mycluster/group_vars/k8s_cluster/k8s-cluster.yml
-sudo sed -i '/^apiserver_loadbalancer_port:/d' inventory/mycluster/group_vars/k8s_cluster/k8s-cluster.yml
-printf "apiserver_loadbalancer_domain_name: 192.168.154.137\napiserver_loadbalancer_port: 6443\n" | sudo tee -a inventory/mycluster/group_vars/k8s_cluster/k8s-cluster.yml
+#    Ensure these are present in inventory/mycluster/group_vars/all/all.yml
+sudo sed -i '/^apiserver_loadbalancer_domain_name:/d' inventory/mycluster/group_vars/all/all.yml
+sudo sed -i '/^apiserver_loadbalancer_port:/d' inventory/mycluster/group_vars/all/all.yml
+printf "apiserver_loadbalancer_domain_name: 192.168.154.137\napiserver_loadbalancer_port: 6443\n" | sudo tee -a inventory/mycluster/group_vars/all/all.yml
 
 # (Optional) fix comment in SANs: mark 192.168.154.137 as LB/HAProxy
-# and ensure 192.168.154.137 remains listed under supplementary_addresses_in_ssl_keys
+# and ensure 192.168.154.137 remains listed under supplementary_addresses_in_ssl_keys at the inventory/mycluster/group_vars/k8s_cluster/k8s-cluster.yml
 ```
 
 #### Token-by-token breakdown + safety notes
