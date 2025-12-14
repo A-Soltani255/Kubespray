@@ -6,7 +6,7 @@
 # registry_host: "myprivateregisry.com"
 # === Offline root if served by your mini HTTP server ===> files_repo: "http://192.168.154.137:8080"
 # === Offline root served by your raw (hosted) repository ===
-files_repo: "http://192.168.154.133:8081/repository/files"
+files_repo: "http://192.168.154.133:8081/repository/raw"
 ### If using CentOS, RedHat, AlmaLinux or Fedora
 # yum_repo: "http://myinternalyumrepo"
 ### If using Debian
