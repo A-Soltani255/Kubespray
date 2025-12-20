@@ -139,6 +139,16 @@ custom_cni_chart_values:
       enabled: True
     hostRoot: /run/cilium/cgroupv2
 
+  extraVolumes:
+    - name: lib-modules
+      hostPath:
+        path: /lib/modules
+        type: Directory
+  extraVolumeMounts:
+    - name: lib-modules
+      mountPath: /lib/modules
+      readOnly: true
+
   operator:
     enabled: True
     image:
