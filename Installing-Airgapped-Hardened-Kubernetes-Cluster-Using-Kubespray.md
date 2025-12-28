@@ -266,7 +266,7 @@ tar cvfz pypi.tar.gz ./pip-req
 ```bash
 dnf install ansible -y
 cd /opt/kubespray/contrib/offline
-./generate_list.sh             # creates ./tmp/files.list and ./tmp/images.list files
+./generate_list.sh             # creates ./temp/files.list and ./temp/images.list files
 ```
 
 - [`./files.sh`](./Scripts,%20appendices%20and%20Configurations/files.sh)                               # downloads all required binaries per files.list
