@@ -578,7 +578,7 @@ On the Kubespray host:
 cd /opt
 tar xvf kubespray-2.28.0.tar.gz
 
-dnf install -y python3.12 python3.12-pip
+dnf install -y python3.12 python3.12-pip rsync
 alternatives --install /usr/bin/python3 python /usr/bin/python3.12 10
 alternatives --install /usr/bin/python3 python /usr/bin/python3.9 20
 alternatives --config python
