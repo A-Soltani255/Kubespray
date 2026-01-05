@@ -412,7 +412,7 @@ cp -r offline-files/* raw
 FILES=$(find raw -type f)
 
 # Push the files to the repository named raw (replace the repository URL with your own values), which is a **raw (hosted)** repository in Nexus Repository Manager.
-for i in $FILES do; curl -v --user 'admin:admin' --upload-file $i http://192.168.154.133:8081/repository/${i}; done
+for i in $FILES; do curl -v --user 'admin:admin' --upload-file $i http://192.168.154.133:8081/repository/${i}; done
 
 # files_repo => http://192.168.154.133:8081/repository/raw
 
