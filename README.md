@@ -103,7 +103,7 @@ extended runbooks for specific scenarios.
   - Defining jobs such as `kubespray-full`, `kubespray-cilium`, `kubespray-custom-cni`, etc.  
   - Having each job call `ci/run-kubespray.sh`, which runs  
     `ansible-playbook -i inventory/mycluster/inventory.ini cluster.yml [--tags ...]`  
-  - Using SSH keys from the `gitlab-runner` user to reach all cluster nodes safely :contentReference[oaicite:3]{index=3}  
+  - Using SSH keys from the `gitlab-runner` user to reach all cluster nodes safely.
 
 As the project evolves, additional improvements and day-2 operations may be tracked in
 the [Issues tab](https://github.com/A-Soltani255/Kubespray/issues).
