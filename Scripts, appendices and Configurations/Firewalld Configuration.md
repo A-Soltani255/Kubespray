@@ -17,7 +17,7 @@ The configuration separates traffic into:
 ## 1. Start Firewalld
 
 ```bash
-systemctl start firewalld
+systemctl enable --now firewalld
 ```
 
 ---
