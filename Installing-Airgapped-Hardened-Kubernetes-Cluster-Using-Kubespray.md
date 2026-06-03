@@ -235,7 +235,8 @@ Think of every Kubernetes node as having two doors:
    The full firewalld configuration, including custom zones, services, ipsets, rich rules, Cilium traffic, master-only rules, worker-only rules, verification commands, and rollback steps is documented here:
    
    [Open Kubespray Firewalld Configuration](./Scripts,%20appendices%20and%20Configurations/Firewalld%20Configuration.md)
-OR
+
+   OR
 
    ```bash
    systemctl disable firewalld && systemctl stop firewalld
