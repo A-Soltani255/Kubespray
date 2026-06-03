@@ -130,22 +130,57 @@ With this foundation, you can move straight into the procedural sections and bui
 
 ## 0) Topology / Addresses / Versions
 
-|    Role   |       Hostname       |       IP       | Notes |
-|-----------|----------------------|----------------|-------|
-| master    | master1.soltani.co   | 192.168.10.1   | |
-| master    | master2.soltani.co   | 192.168.10.2   | |
-| master    | master3.soltani.co   | 192.168.10.3   | |
-| worker    | worker1.soltani.co   | 192.168.10.4   | |
-| worker    | worker2.soltani.co   | 192.168.10.5   | |
-| kubespray | kubespray.soltani.co | 192.168.10.10  | It chould serves offline binaries over HTTP: `http://192.168.154.137:8080/` with is not required |
-| haproxy   | haproxy.soltani.co   | 192.168.10.100 | Forward requests on port 6443 to port 6443 on the master nodes, and requests on ports 443 and 80 to ports 30081 and 30080 on the worker nodes, respectively. |
-| nexus     | nexus.soltani.co     | 192.168.10.20  | YUM + Docker hosted registry on `:5000 :5001 :5002 :5003` |
+We have **two different networks** for the Kubernetes nodes:
+
+|        Plane       |       Subnet       |                     Purpose                     | Firewalld zone |
+| ------------------ | -----------------: | ----------------------------------------------- | -------------- |
+| Management network |  `172.40.10.0/24`  | SSH, Kubespray access, monitoring/admin traffic | `k8s-mgmt`     |
+| Data network       | `192.168.10.0/24`  | Kubernetes internal traffic between nodes       | `k8s-data`     |
+
+Think of every Kubernetes node as having two doors:
+
+```text
+               Management Network
+               172.40.10.0/24
+                      |
+                      |
+                 [ MGMT_IF ]
+                  SSH 22
+                  Zabbix 10050
+                  Kubespray/Ansible
+                      |
++------------------------------------------------+
+|              Kubernetes Node                   |
++------------------------------------------------+
+                      |
+                 [ DATA_IF ]
+                  Kubernetes API
+                  Kubelet
+                  etcd
+                  Cilium VXLAN
+                      |
+                      |
+                Data Network
+              192.168.10.0/24
+```
+
+|    Role   |       Hostname       |     Data IP    | Managementy IP | Notes |
+|-----------|----------------------|----------------|----------------|-------|
+| Master    | master1.soltani.co   | 192.168.10.1   | 172.40.10.1    | |
+| Master    | master2.soltani.co   | 192.168.10.2   | 172.40.10.2    | |
+| Master    | master3.soltani.co   | 192.168.10.3   | 172.40.10.3    | |
+| Worker    | worker1.soltani.co   | 192.168.10.4   | 172.40.10.4    | |
+| Worker    | worker2.soltani.co   | 192.168.10.5   | 172.40.10.5    | |
+| Kubespray | kubespray.soltani.co | 192.168.10.10  | 172.40.10.10   | It chould serves offline binaries over HTTP: `http://kubespray.soltani.co:8080/` which is not required |
+| HaProxy   | apiserver.soltani.co | 192.168.10.100 | 172.40.10.100  | Forward requests on port 6443 to port 6443 on the master nodes, and requests on ports 443 and 80 to ports 30081 and 30080 on the worker nodes, respectively. |
+| Nexus     | nexus.soltani.co     | 192.168.10.20  | 172.40.10.20   | YUM + Docker hosted registry on `:5000 :5001 :5002 :5003` |
+| NTP       | ntp.soltani.co       |        -       | 172.40.10.1    | This is your NTP server. Do not set the time manually. Use NTP instead. |
 
 **Mirrors (namespaces exist on Nexus):**
-- docker.io `nexus.soltani.co:5000`
-- registry.k8s.io `nexus.soltani.co:5001`
-- quay.io `nexus.soltani.co:5002`
-- ghcr.io `nexus.soltani.co:5003`
+- docker.io --> `nexus.soltani.co:5000`
+- registry.k8s.io --> `nexus.soltani.co:5001`
+- quay.io --> `nexus.soltani.co:5002`
+- ghcr.io --> `nexus.soltani.co:5003`
 
 ##### ***CRI:*** containerd (with nerdctl & ctr)
 ##### ***CNI:*** Cilium (CRDs)
@@ -159,62 +194,65 @@ With this foundation, you can move straight into the procedural sections and bui
 ## 1) OS & Network Prereqs (ALL nodes: master1/worker1/worker2/kubespray/nexus)
 
 1. **Rocky 10 minimal** install, static IPs as above; correct DNS resolvers.
-2. **Time sync:** enable `chronyd` or `systemd-timesyncd`.
-3. **Firewall:** allow intra-cluster traffic or temporarily disable it during bootstrap. This typically requires the cluster nodes and their CIDR IP ranges.
+2. **/etc/hosts** (optional, but helpful): map hostnames ↔ IPs.
 
    ```bash
-   # Accept only cluster nodes
-   firewall-cmd --zone=trusted --add-source=192.168.154.131 --permanent
-   firewall-cmd --zone=trusted --add-source=192.168.154.132 --permanent
-   firewall-cmd --zone=trusted --add-source=192.168.154.134 --permanent
-   firewall-cmd --zone=trusted --add-source=192.168.154.135 --permanent
-   firewall-cmd --zone=trusted --add-source=192.168.154.136 --permanent
-   firewall-cmd --zone=trusted --add-source=192.168.154.137 --permanent
+   cat <<EOF | sudo tee /etc/hosts
+   127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+   ::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+   192.168.10.1   master1.soltani.co
+   192.168.10.2   master2.soltani.co
+   192.168.10.3   master3.soltani.co
+   192.168.10.4   worker1.soltani.co
+   192.168.10.5   worker2.soltani.co
+   192.168.10.10  kubespray.soltani.co
+   192.168.10.20  nexus.soltani.co
+   192.168.10.100 apiserver.soltani.co
+   192.168.10.200 ntp.soltani.co
+   EOF
+   ```
+3. **Time sync:** enable `chronyd` or `systemd-timesyncd`.
 
-   # Accept only cluster CIDRs (replace with your values)
-   firewall-cmd --zone=trusted --add-source=10.233.64.0/18 --permanent
-   firewall-cmd --zone=trusted --add-source=10.233.0.0/18 --permanent
+   ```bash
+   NTP_SERVER="ntp.soltani.co"
 
-   # Apply
-   firewall-cmd --reload
+   sudo cp -a /etc/chrony.conf /etc/chrony.conf.$(date +%F_%H%M%S).bak
 
-   #Verfy your 
-   firewall-cmd --list-sources --zone=trusted
+   sudo sed -i -E 's/^[[:space:]]*(server|pool)[[:space:]]+/# &/' /etc/chrony.conf
+
+   grep -qE "^[[:space:]]*server[[:space:]]+${NTP_SERVER}[[:space:]]" /etc/chrony.conf || \
+   echo "server ${NTP_SERVER} iburst" | sudo tee -a /etc/chrony.conf >/dev/null
+
+   sudo systemctl restart chronyd
+
+   chronyc -n sources -v
+   chronyc tracking
    ```
    
+5. **Firewall:** allow intra-cluster traffic or temporarily disable it during bootstrap. This typically requires the cluster nodes and their CIDR IP ranges.
+   
+   Firewalld must be configured before or during the Kubespray deployment to separate management-plane traffic from Kubernetes data-plane traffic.
+   The full firewalld configuration, including custom zones, services, ipsets, rich rules, Cilium traffic, master-only rules, worker-only rules, verification commands, and rollback steps is documented here:
+   
+   [Open Kubespray Firewalld Configuration](./Scripts,%20appendices%20and%20Configurations/Firewalld Configuration.md)
 OR
 
    ```bash
    systemctl disable firewalld && systemctl stop firewalld
    ```
 
-4. **/etc/hosts** (optional, but helpful): map hostnames ↔ IPs.
-
-   ```bash
-   cat <<EOF | sudo tee /etc/hosts
-   127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
-   ::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
-   192.168.154.131 master1
-   192.168.154.132 master2
-   192.168.154.134 master3
-   192.168.154.135 worker1
-   192.168.154.136 worker2
-   192.168.154.133 nexus
-   192.168.154.137 kubespray
-   EOF
-   ```
 5. **Passwordless SSH** from the Kubespray node to all cluster nodes (root or a sudoer).
 
 ```bash
-# On 192.168.154.137 (kubespray VM)
+# On 192.168.10.10 (kubespray VM)
 ssh-keygen -t ed25519 -N '' -f ~/.ssh/id_ed25519
-for h in master1 master2 master3 worker1 worker2; do ssh-copy-id root@$h; done
+for h in master1.soltani.co master2.soltani.co master3.soltani.co worker1.soltani.co worker2.soltani.co; do ssh-copy-id root@$h; done
 # quick check:
-ansible all -i "master1,master2,master3,worker1,worker2," -m ping -u root
+ansible all -i "master1.soltani.co,master2.soltani.co,master3.soltani.co,worker1.soltani.co,worker2.soltani.co" -m ping -u root
 ```
 ---
 
-## 2) Online Preparation (do these on an **internet‑connected** Rocky 9 VM)
+## 2) Online Preparation (do these on an **internet‑connected** Rocky 10 VM)
 
 > This primes everything: **RPMs**, **Kubespray code**, **pip wheels**, **container images**, and **offline binaries**.
 
@@ -222,6 +260,7 @@ ansible all -i "master1,master2,master3,worker1,worker2," -m ping -u root
 ```bash
 dnf config-manager --add-repo https://download.docker.com/linux/rhel/docker-ce.repo
 dnf install -y epel-release yum-utils
+dnf update -y && dnf upgrade -y
 reposync -p /mnt --download-metadata --newest-only
 tar cvzf mnt.tar.gz /mnt
 ```
@@ -231,7 +270,7 @@ tar cvzf mnt.tar.gz /mnt
 ### 2.2 Get the latest Kubespray source from https://github.com/kubernetes-sigs/kubespray
 ```bash
 cd /opt
-curl -LO https://github.com/kubernetes-sigs/kubespray/archive/refs/tags/v2.28.0.tar.gz
+curl -LO https://github.com/kubernetes-sigs/kubespray/archive/refs/tags/v2.30.0.tar.gz
 ```
 
 ### 2.3 Prepare Python 3.12, virtualenv, Ansible, and wheel cache
