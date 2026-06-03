@@ -55,24 +55,24 @@ firewall-cmd --permanent --list-all-policies
 ## 3. Define Variables
 
 ```bash
-MGMT_IF="$(ip -br -4 a | awk '$3 ~ /^172\.40\.144\./ {print $1; exit}')"
-DATA_IF="$(ip -br -4 a | awk '$3 ~ /^192\.168\.144\./ {print $1; exit}')"
+MGMT_IF="$(ip -br -4 a | awk '$3 ~ /^172\.40\.10\./ {print $1; exit}')"
+DATA_IF="$(ip -br -4 a | awk '$3 ~ /^192\.168\.10\./ {print $1; exit}')"
 
 POD_CIDR="10.233.64.0/18"
 DATA_CIDR="192.168.144.0/24"
 
-ADMIN_NET1="172.40.147.0/24"
-ADMIN_NET2="192.168.117.0/24"
-KUBESPRAY="172.40.144.2/32"
+ADMIN_NET1="172.40.20.0/24"
+ADMIN_NET2="192.168.20.0/24"
+KUBESPRAY="172.40.10.10/32"
 
 MASTER1="192.168.144.3/32"
 MASTER2="192.168.144.4/32"
 MASTER3="192.168.144.5/32"
 
-ZABBIX1="172.40.142.1/32"
-ZABBIX2="172.40.142.2/32"
+ZABBIX1="172.40.10.101/32"
+ZABBIX2="172.40.10.102/32"
 
-SSH_PORT="1313"
+SSH_PORT="22"
 ```
 
 ### Verify Detected Interfaces
