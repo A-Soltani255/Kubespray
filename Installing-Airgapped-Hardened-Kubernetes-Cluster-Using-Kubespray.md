@@ -10,7 +10,7 @@ My goal is to give you a reproducible, opinionated path that reflects what actua
 The environment used throughout:
 - Control planes: master1.soltani.co (`192.168.10.1`) master2.soltani.co (`192.168.10.2`) master3.soltani.co (`192.168.10.3`)
 - Workers: worker1.soltani.co (`192.168.10.4`), worker2.soltani.co (`192.168.10.5`)
-- Build/automation: kubespray.soltani.co (`192.168.10.10`) — also chould serves offline files over HTTP (`:8080`)
+- Build/automation: kubespray.soltani.co (`192.168.10.10`) — also chould serves offline files over HTTP (`:8080`) which is not required!
 - Artifact hub: nexus.soltani.co (`192.168.10.20`) — YUM (hosted) for RPMs and Docker (hosted) registries on `:5000` `:5001` `:5002` `:5003` for images
 
 > Design choices (and why):
@@ -146,7 +146,7 @@ Think of every Kubernetes node as having two doors:
                       |
                  [ MGMT_IF ]
                   SSH 22
-                  Zabbix 10050
+                  Zabbix Agent 10050
                   Kubespray/Ansible
                       |
 +------------------------------------------------+
@@ -318,6 +318,8 @@ cd /opt/kubespray/contrib/offline
 > `images.sh` requires Docker to be running on the internet-connected VM. Note that the tag currently applied to images by the `images.sh` script is only a temporary identifier. In the future, each image will be pushed to its own private repository, based on the registry it comes from. We will not push all images to a single repository after extracting them. Instead, we will retag them according to the registry prefix. For example, images that start with `docker.io` or `ghcr.io` will receive different tags (as described earlier), mapped to the appropriate Nexus port for each registry. This way, each image is pushed to its corresponding private repository.
 
 ### 2.5 Seed **Nexus** with YUM + Docker hosted registries (in the offline LAN)
+
+Kubespray nodes must use the internal Nexus repository server for RPM packages and container images in the air-gapped environment. The full Nexus build and validation runbook is documented here: [Open Nexus Repository Manager for Air-Gapped Kubespray Deployments](./Scripts,%20appendices%20and%20Configurations//Nexus%20Preparation/Nexus%20Repository%20Manager%20for%20Air-Gapped%20Kubespray%20Deployments.md
 
 1) **Push RPMs**  
    - Copy `mnt.tar.gz` to Nexus and extract:
