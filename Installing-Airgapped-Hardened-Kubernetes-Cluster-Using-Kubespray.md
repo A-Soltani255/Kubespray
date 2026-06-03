@@ -1,44 +1,45 @@
 
 # Air‑Gapped & Hardened Kubernetes with Kubespray — Complete Instruction
-_Last updated: 2025-11-25 13:55:51 UTC_
+_Last updated: 2026-06-03 13:55:51 UTC_
 
 
 ## Introduction:
-This document distills the experience I gained from building this scenario multiple times: a Kubernetes 1.32.5 cluster on Rocky Linux 9 in a fully air-gapped (offline) environment using Kubespray and Sonatype Nexus. It is based on repeated, real deployments and focuses on the meaningful, hard-earned details that matter in practice: mirroring RPMs and container images, staging Kubernetes binaries, configuring containerd with HTTP registry mirrors, pinning versions, disabling non-essential add-ons, and validating the final cluster.
+This document distills the experience I gained from building this scenario multiple times: a Kubernetes 1.32.5 cluster on Rocky Linux 10 in a fully air-gapped (offline) environment using Kubespray and Sonatype Nexus. It is based on repeated, real deployments and focuses on the meaningful, hard-earned details that matter in practice: mirroring RPMs and container images, staging Kubernetes binaries, configuring containerd with HTTP registry mirrors, pinning versions, disabling non-essential add-ons, and validating the final cluster.
 My goal is to give you a reproducible, opinionated path that reflects what actually worked in practice—not just theory.
 
 The environment used throughout:
-- Control planes: master1 (`192.168.154.131`) master2 (`192.168.154.132`) master3 (`192.168.154.134`)
-- Workers: worker1 (`192.168.154.135`), worker2 (`192.168.154.136`)
-- Build/automation: kubespray (`192.168.154.137`) — also chould serves offline files over HTTP (`:8080`)
-- Artifact hub: nexus (`192.168.154.133`) — YUM (hosted) for RPMs and Docker (hosted) registries on `:5000` `:5001` `:5002` `:5003` for images
+- Control planes: master1.soltani.co (`192.168.10.1`) master2.soltani.co (`192.168.10.2`) master3.soltani.co (`192.168.10.3`)
+- Workers: worker1.soltani.co (`192.168.10.4`), worker2.soltani.co (`192.168.10.5`)
+- Build/automation: kubespray.soltani.co (`192.168.10.10`) — also chould serves offline files over HTTP (`:8080`)
+- Artifact hub: nexus.soltani.co (`192.168.10.20`) — YUM (hosted) for RPMs and Docker (hosted) registries on `:5000` `:5001` `:5002` `:5003` for images
 
 > Design choices (and why):
 >- Air-gapped: reduces supply-chain risk, satisfies compliance, and guarantees repeatable builds by eliminating “latest from the Internet”.
 >- Kubespray: declarative, idempotent, and inventory-driven automation built on Ansible; easier to audit than ad-hoc kubeadm scripts.
 >- containerd (+ nerdctl/ctr): the CNCF-blessed container runtime with clear, file-driven mirror and auth configuration.
->- Cilium (KDD mode): mature, simple underlay/overlay networking; no external datastore; offline artifacts are small and easy to mirror.
+>- Cilium (CRD mode): mature, simple underlay/overlay networking; no external datastore; offline artifacts are small and easy to mirror.
 >- Core components only: apiserver, controller-manager, scheduler, etcd, kube-proxy, CoreDNS, Cilium node/controllers. We explicitly disable nginx-proxy, dns-autoscaler, metrics-server, Helm, etc., for a minimal, production-friendly baseline.
 
 ### What you will do (nature of the work)
 
-#### 1. Prepare artifacts online (once, on an Internet-connected Rocky 9 box):
+#### 1. Prepare artifacts online (once, on an Internet-connected Rocky 10 box):
 - Mirror OS RPMs (BaseOS/AppStream/EPEL/Docker CE) with reposync and archive them.
 - Clone Kubespray, pre-download pip wheels for offline installs, and generate lists of required Kubernetes binaries and container images using contrib/offline.
 - Pull and save all container images and gather all binaries (kubeadm/kubelet/kubectl, containerd/runc/nerdctl, crictl, CNI, etcd, Helm, Cilium).
 #### 2. Seed Nexus in the offline LAN:
 - Load the archived RPMs into a YUM (hosted) repo (preserving repodata/).
-- Stand up a Docker (hosted) registry on `192.168.154.133:5000`, load all images, retag them under the required mirror namespaces, and push.
-- Ensure every offline node has a local.repo pointing to Nexus and can dnf update without Internet.
+- Stand up a Docker (hosted) registry on `nexus.soltani.co:5000`, load all images, retag them under the required mirror namespaces, and push.
+- Ensure every offline node has a `local.repo` pointing to Nexus and can dnf update without Internet.
 #### 3. Stage files on the Kubespray VM and serve over HTTP:
 - Place the offline binaries under /srv/offline-files/ following the exact paths Kubespray expects.
 - Serve them with a tiny HTTP server (`python3 -m http.server 8080`).
+- Or we can use Nexus again for that purpose.
 #### 4. Automate the cluster build with Kubespray:
-- Prepare an inventory for master1, worker1, worker2.
+- Prepare an inventory for master1.soltani.co, master2.soltani.co, master3.soltani.co, worker1.soltani.co, worker2.soltani.co.
 - Provide group_vars for offline, k8s-cluster, and containerd (mirrors, insecure HTTP, optional auth).
-- Run cluster.yml once to converge the cluster.
+- Run `cluster.yml` once to converge the cluster.
 #### 5. Verify and lock in:
-- Confirm nodes/Pods, image pull behavior (HTTP mirrors), and add-on minimalism.
+- Confirm nodes/Pods, image pull behavior (HTTPS mirrors), and add-on minimalism.
 - Capture the final configs and artifacts for audit and future rebuilds.
 
 This is infrastructure as code. Every input (versions, URLs, checksums, mirrors) is in version-controlled YAML, and the output is deterministic when rerun against the same artifacts.
@@ -52,11 +53,11 @@ Kubespray is a mature, upstream-maintained collection of Ansible playbooks and r
 #### 2. Inventory-Driven
 - All topology and host-specific details live in a single inventory. Scaling up or down is a change to data, not to code.
 #### 3. Modular, Opinionated-but-Flexible
-- Choose container runtime (containerd), CNI (Calico/Cilium/…), add-ons, OS families, etc. Toggle features with variables rather than hand-editing system files.
+- Choose container runtime (containerd), CNI (Cilium/Calico/…), add-ons, OS families, etc. Toggle features with variables rather than hand-editing system files.
 #### 4. Offline-Friendly
 - The contrib/offline toolkit produces authoritative lists of binaries and images for a given version set. That feeds directly into your mirroring pipeline.
 #### 5. Security & Compliance
-- You control the full supply chain: exact versions, checksums, filesystem presence, and which endpoints are contacted (or not). SELinux/sysctls/firewall are managed consistently.
+- You control the full supply chain: exact versions, checksums, filesystem presence, and which endpoints are contacted (or not). SELinux/sysctls/firewalld are managed consistently.
 #### 6. Day-2 Operations
 - Built-in playbooks for scale up/down, upgrades, and reset, minimizing custom scripting. You can roll nodes and upgrade in a controlled, repeatable way.
 #### 7. Community & Transparency
@@ -67,7 +68,7 @@ Kubespray is a mature, upstream-maintained collection of Ansible playbooks and r
 ### What this document gives you
 - A complete blueprint for your exact topology and IPs, including the Nexus layout you use `/kubespray/{docker.io,ghcr.io,quay.io,registry.k8s.io}`.
 - A locked set of versions (Kubernetes, containerd/runc, CNI, etcd, Helm, Cilium) and the offline directory structure Kubespray expects.
-- Explicit containerd configuration to use HTTP mirrors and, if needed, Basic Auth, with examples of the rendered `hosts.toml` files.
+- Explicit containerd configuration to use HTTPS mirrors and, if needed, Basic Auth, with examples of the rendered `hosts.toml` files.
 - Minimal add-ons (CoreDNS + Cilium) and instructions to disable nginx-proxy and DNS autoscaler for a lean control plane.
 - Troubleshooting drawn from real errors (HTTPS vs HTTP pulls, duplicate “v” in versions, archive vs file copy, kubeadm template validation, Cilium CRDs), with concrete fixes you can apply immediately.
 - Verification and Day-2 guidance (node lifecycle, etcd backups, image checks, DNS sanity tests).
@@ -76,22 +77,22 @@ Kubespray is a mature, upstream-maintained collection of Ansible playbooks and r
 ### Scope, assumptions, and success criteria
 
 #### In scope
-- Three control planes (etcd on all three) fronted by HAProxy at `192.168.154.137:6443`.
+- Three control planes (etcd on all three) fronted by HAProxy at `192.168.10.100:6443`.
 - Two worker nodes.
 - Air-gapped build using Nexus (YUM + Docker hosted).
-- `containerd` runtime with pull-through mirrors configured for HTTP on `192.168.154.133` `:5000` `:5001` `:5002` `:5003`.
+- `containerd` runtime with pull-through mirrors configured for HTTP on `nexus.soltani.co` `:5000` `:5001` `:5002` `:5003`.
 - Cilium networking , CoreDNS, kube-proxy; no nginx-proxy, no dns-autoscaler, no metrics-server, no Helm.
 
 #### Assumptions
-- All nodes run Rocky 9; SELinux disabled (Kubespray manages policies).
+- All nodes run Rocky 10; SELinux unconfigured manually (Kubespray manages policies).
 - Time is synchronized; swap is disabled/masked.
 - Passwordless SSH from the Kubespray VM to all cluster nodes.
-- Adequate firewall allowances inside the cluster; external ingress/egress is not covered here.
+- Adequate firewall allowances inside the cluster; external ingress/egress is covered here.
 
 #### Success looks like
 - `kubectl get nodes` shows master1/master2/master3/worker1/worker2 Ready.
 - Only core Pods are running in `kube-system` (apiserver, scheduler, controller-manager, etcd, kube-proxy, CoreDNS, Cilium).
-- `nerdctl -n k8s.io pull 192.168.154.133:5000/kubespray/registry.k8s.io/kube-apiserver:v1.32.5` succeeds from any node (HTTP mirror working).
+- `nerdctl -n k8s.io pull https://nexus.soltani.co:5001/kube-apiserver:v1.32.5` succeeds from any node (HTTPS mirror working).
 - No contacts to the public Internet; all pulls resolve via Nexus.
 
 ### Risks, trade-offs, and how this guide mitigates them
@@ -129,27 +130,27 @@ With this foundation, you can move straight into the procedural sections and bui
 
 ## 0) Topology / Addresses / Versions
 
-| Role      | Hostname  | IP              | Notes |
-|-----------|-----------|-----------------|-------|
-| master    | master1   | 192.168.154.131 | |
-| master    | master2   | 192.168.154.132 | |
-| master    | master3   | 192.168.154.134 | |
-| worker    | worker1   | 192.168.154.135 | |
-| worker    | worker2   | 192.168.154.136 | |
-| kubespray | kubespray | 192.168.154.137 | It chould serves offline binaries over HTTP: `http://192.168.154.137:8080/` |
-| haproxy   | haproxy   | 192.168.154.137 | Forward requests on port 6443 to port 6443 on the master nodes, and requests on ports 443 and 80 to ports 30081 and 30080 on the worker nodes, respectively. |
-| nexus     | nexus     | 192.168.154.133 | YUM + Docker hosted registry on `:5000 :5001 :5002 :5003` |
+|    Role   |       Hostname       |       IP       | Notes |
+|-----------|----------------------|----------------|-------|
+| master    | master1.soltani.co   | 192.168.10.1   | |
+| master    | master2.soltani.co   | 192.168.10.2   | |
+| master    | master3.soltani.co   | 192.168.10.3   | |
+| worker    | worker1.soltani.co   | 192.168.10.4   | |
+| worker    | worker2.soltani.co   | 192.168.10.5   | |
+| kubespray | kubespray.soltani.co | 192.168.10.10  | It chould serves offline binaries over HTTP: `http://192.168.154.137:8080/` with is not required |
+| haproxy   | haproxy.soltani.co   | 192.168.10.100 | Forward requests on port 6443 to port 6443 on the master nodes, and requests on ports 443 and 80 to ports 30081 and 30080 on the worker nodes, respectively. |
+| nexus     | nexus.soltani.co     | 192.168.10.20  | YUM + Docker hosted registry on `:5000 :5001 :5002 :5003` |
 
 **Mirrors (namespaces exist on Nexus):**
-- docker.io `192.168.154.133:5000`
-- registry.k8s.io `192.168.154.133:5001`
-- quay.io `192.168.154.133:5002`
-- ghcr.io `192.168.154.133:5003`
+- docker.io `nexus.soltani.co:5000`
+- registry.k8s.io `nexus.soltani.co:5001`
+- quay.io `nexus.soltani.co:5002`
+- ghcr.io `nexus.soltani.co:5003`
 
 ##### ***CRI:*** containerd (with nerdctl & ctr)
-##### ***CNI:*** Cilium (KDD CRDs)
-##### ***Kubernetes version:*** 1.32.5
-##### ***Kubespray version:*** 2.28.0
+##### ***CNI:*** Cilium (CRDs)
+##### ***Kubernetes version:*** 1.34.3
+##### ***Kubespray version:*** 2.30.0
 
 
 
@@ -157,7 +158,7 @@ With this foundation, you can move straight into the procedural sections and bui
 
 ## 1) OS & Network Prereqs (ALL nodes: master1/worker1/worker2/kubespray/nexus)
 
-1. **Rocky 9 minimal** install, static IPs as above; correct DNS resolvers.
+1. **Rocky 10 minimal** install, static IPs as above; correct DNS resolvers.
 2. **Time sync:** enable `chronyd` or `systemd-timesyncd`.
 3. **Firewall:** allow intra-cluster traffic or temporarily disable it during bootstrap. This typically requires the cluster nodes and their CIDR IP ranges.
 
