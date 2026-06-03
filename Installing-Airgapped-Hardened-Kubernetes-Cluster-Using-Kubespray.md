@@ -236,11 +236,12 @@ Think of every Kubernetes node as having two doors:
    
    [Open Kubespray Firewalld Configuration](./Scripts,%20appendices%20and%20Configurations/Firewalld%20Configuration.md)
 
-   OR
-
+   **Alternative:** If firewall filtering is handled by an external firewall or security appliance, `firewalld` can be disabled on the Kubernetes nodes:
    ```bash
-   systemctl disable firewalld && systemctl stop firewalld
+   systemctl disable --now firewalld
    ```
+
+> **Warning:** Do not disable `firewalld` unless network security is enforced somewhere else. In production, keeping `firewalld` enabled with explicit Kubernetes rules is safer than disabling it completely.
 
 5. **Passwordless SSH** from the Kubespray node to all cluster nodes (root or a sudoer).
 
