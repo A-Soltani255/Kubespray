@@ -91,10 +91,10 @@ If either variable is empty, stop and fix the IP/interface detection before cont
 ### 4.1 SSH on Custom Management Port
 
 ```bash
-firewall-cmd --permanent --new-service=ssh_1313
-firewall-cmd --permanent --service=ssh_1313 --set-short="SSH 1313"
-firewall-cmd --permanent --service=ssh_1313 --set-description="Management SSH on TCP 1313"
-firewall-cmd --permanent --service=ssh_1313 --add-port=1313/tcp
+firewall-cmd --permanent --new-service=ssh_22
+firewall-cmd --permanent --service=ssh_22 --set-short="SSH 22"
+firewall-cmd --permanent --service=ssh_22 --set-description="Management SSH on TCP 22"
+firewall-cmd --permanent --service=ssh_22 --add-port=22/tcp
 ```
 
 ### 4.2 Kubernetes API
@@ -275,7 +275,7 @@ Apply this section on **all Kubernetes nodes**, both masters and workers.
 ### 8.1 Allow Management SSH From Admin Networks
 
 ```bash
-firewall-cmd --permanent --zone=k8s-mgmt --add-rich-rule='rule priority=-100 family=ipv4 source ipset=admin_nets_v4 service name="ssh_1313" accept'
+firewall-cmd --permanent --zone=k8s-mgmt --add-rich-rule='rule priority=-100 family=ipv4 source ipset=admin_nets_v4 service name="ssh_22" accept'
 ```
 
 ### 8.2 Allow Zabbix Servers to Reach Zabbix Agent
@@ -412,7 +412,7 @@ firewall-cmd --list-all-policies
 ### 12.6 Check Created Services
 
 ```bash
-firewall-cmd --permanent --get-services | tr ' ' '\n' | grep -E 'ssh_1313|k8s_api|kubelet_api|cilium_vxlan|cilium_health|etcd_peer|zabbix_agent'
+firewall-cmd --permanent --get-services | tr ' ' '\n' | grep -E 'ssh_22|k8s_api|kubelet_api|cilium_vxlan|cilium_health|etcd_peer|zabbix_agent'
 ```
 
 ### 12.7 Check Created Ipsets
@@ -497,7 +497,7 @@ firewall-cmd --permanent --delete-policy=kd2trst
 ### 14.3 Remove Custom Services
 
 ```bash
-firewall-cmd --permanent --delete-service=ssh_1313
+firewall-cmd --permanent --delete-service=ssh_22
 firewall-cmd --permanent --delete-service=k8s_api
 firewall-cmd --permanent --delete-service=kubelet_api
 firewall-cmd --permanent --delete-service=cilium_vxlan
