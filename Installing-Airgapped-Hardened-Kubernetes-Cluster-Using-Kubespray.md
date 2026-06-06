@@ -713,11 +713,11 @@ Saturday 16 August 2025  22:24:24 -0400 (0:00:00.037)       0:05:21.083 *******
 Saturday 16 August 2025  22:24:24 -0400 (0:00:00.035)       0:05:21.119 *******
 
 PLAY RECAP *****************************************************************************************************************************************************************************************************************************
-master1                    : ok=510  changed=48   unreachable=0    failed=0    skipped=882  rescued=0    ignored=1
-master2                    : ok=510  changed=48   unreachable=0    failed=0    skipped=882  rescued=0    ignored=1
-master3                    : ok=510  changed=48   unreachable=0    failed=0    skipped=882  rescued=0    ignored=1
-worker1                    : ok=323  changed=24   unreachable=0    failed=0    skipped=533  rescued=0    ignored=1
-worker2                    : ok=323  changed=24   unreachable=0    failed=0    skipped=533  rescued=0    ignored=1
+master1.soltani.co                    : ok=510  changed=48   unreachable=0    failed=0    skipped=882  rescued=0    ignored=1
+master2.soltani.co                    : ok=510  changed=48   unreachable=0    failed=0    skipped=882  rescued=0    ignored=1
+master3.soltani.co                    : ok=510  changed=48   unreachable=0    failed=0    skipped=882  rescued=0    ignored=1
+worker1.soltani.co                    : ok=323  changed=24   unreachable=0    failed=0    skipped=533  rescued=0    ignored=1
+worker2.soltani.co                    : ok=323  changed=24   unreachable=0    failed=0    skipped=533  rescued=0    ignored=1
 
 Saturday 16 August 2025  22:24:24 -0400 (0:00:00.102)       0:05:21.222 *******
 ===============================================================================
