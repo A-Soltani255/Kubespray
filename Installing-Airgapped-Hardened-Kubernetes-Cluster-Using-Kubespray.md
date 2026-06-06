@@ -311,9 +311,9 @@ cd /opt/kubespray/contrib/offline
 ./generate_list.sh             # creates ./temp/files.list and ./temp/images.list files
 ```
 
-- [`./files.sh`](./Scripts,%20appendices%20and%20Configurations/files.sh)                               # downloads all required binaries per files.list
-- [`./images.sh`](./Scripts,%20appendices%20and%20Configurations/images.sh)                             # pulls & saves container images listed in images.list
-- [`./images-verify.sh`](./Scripts,%20appendices%20and%20Configurations/images-verify.sh)               # optional validation of saved images and download the leftover images
+- [`./files.sh`](./Scripts,%20appendices%20and%20Configurations/Scripts/files.sh)                               # downloads all required binaries per files.list
+- [`./images.sh`](./Scripts,%20appendices%20and%20Configurations/Scripts/images.sh)                             # pulls & saves container images listed in images.list
+- [`./images-verify.sh`](./Scripts,%20appendices%20and%20Configurations/Scripts/images-verify.sh)               # optional validation of saved images and download the leftover images
 
 > `images.sh` requires Docker to be running on the internet-connected VM. Note that the tag currently applied to images by the `images.sh` script is only a temporary identifier. In the future, each image will be pushed to its own private repository, based on the registry it comes from. We will not push all images to a single repository after extracting them. Instead, we will retag them according to the registry prefix. For example, images that start with `docker.io` or `ghcr.io` will receive different tags (as described earlier), mapped to the appropriate Nexus port for each registry. This way, each image is pushed to its corresponding private repository.
 
@@ -328,7 +328,7 @@ Kubespray nodes must use the internal Nexus repository server for RPM packages a
      tar xvzf mnt.tar.gz -C /opt
      ```
    - Use your helper to push packages + repodata into a YUM (hosted) repo (depth=1):
-     [./files-push-repo.sh](./Scripts,%20appendices%20and%20Configurations/files-push-repo.sh)
+     [./files-push-repo.sh](./Scripts,%20appendices%20and%20Configurations/Scripts/files-push-repo.sh)
 
    - Distribute a `local.repo` to **all offline hosts** under `/etc/yum.repos.d/` pointing to the Nexus YUM baseurl(s):  
      ```ini
@@ -402,7 +402,7 @@ Kubespray nodes must use the internal Nexus repository server for RPM packages a
      ```
      
    - Load & retag & push:
-     [./images-load-and-retag.sh](./Scripts,%20appendices%20and%20Configurations/images-load-and-retag.sh)
+     [./images-load-and-retag.sh](./Scripts,%20appendices%20and%20Configurations/Scripts/images-load-and-retag.sh)
      
    This script re-tags images under `192.168.154.133:5000/kubespray/<upstream>/<image>:<tag>` and pushes them.
 
@@ -682,14 +682,14 @@ EOF
 
 Copy your prepared **group_vars** into place:
 
-- [kubespray-2.28.0/inventory/mycluster/group_vars/k8s_cluster/k8s-cluster.yml](./Scripts,%20appendices%20and%20Configurations/k8s-cluster-yml.md)
-- [kubespray-2.28.0/inventory/mycluster/group_vars/k8s_cluster/k8s-net-custom-cni.yml](./Scripts,%20appendices%20and%20Configurations/k8s-net-custom-cni-yml.md)
-- [kubespray-2.28.0/inventory/mycluster/group_vars/all/containerd.yml](./Scripts,%20appendices%20and%20Configurations/containerd-yml.md)
-- [kubespray-2.28.0/inventory/mycluster/group_vars/all/all.yml](./Scripts,%20appendices%20and%20Configurations/containerd-yml.md)
-- [kubespray-2.28.0/inventory/mycluster/group_vars/all/offline.yml](./Scripts,%20appendices%20and%20Configurations/offline-yml.md)
+- [kubespray-2.28.0/inventory/mycluster/group_vars/k8s_cluster/k8s-cluster.yml](./Scripts,%20appendices%20and%20Configurations/Configurations/k8s-cluster-yml.md)
+- [kubespray-2.28.0/inventory/mycluster/group_vars/k8s_cluster/k8s-net-custom-cni.yml](./Scripts,%20appendices%20and%20Configurations/Configurations/k8s-net-custom-cni-yml.md)
+- [kubespray-2.28.0/inventory/mycluster/group_vars/all/containerd.yml](./Scripts,%20appendices%20and%20Configurations/Configurations/containerd-yml.md)
+- [kubespray-2.28.0/inventory/mycluster/group_vars/all/all.yml](./Scripts,%20appendices%20and%20Configurations/Configurations/containerd-yml.md)
+- [kubespray-2.28.0/inventory/mycluster/group_vars/all/offline.yml](./Scripts,%20appendices%20and%20Configurations/Configurations/offline-yml.md)
 
 Also create your prepared **hardening.yaml** file in the root directory of the Kubespray project.
-- [kubespray-2.28.0/hardening.yaml](./Scripts,%20appendices%20and%20Configurations/hardening-yaml.md)
+- [kubespray-2.28.0/hardening.yaml](./Scripts,%20appendices%20and%20Configurations/Configurations/hardening-yaml.md)
 
 #### Log visibility in Kubespray (`no_log` & `unsafe_show_logs`)
 - `no_log` (Ansible): hides module args/results in output/logs. Ansible default is false, but Kubespray often sets `no_log: "{{ not (unsafe_show_logs | bool) }}"`, so the effective default is hidden.
