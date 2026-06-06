@@ -319,7 +319,7 @@ cd /opt/kubespray/contrib/offline
 
 ### 2.5 Seed **Nexus** with YUM + Docker hosted registries (in the offline LAN)
 
-Kubespray nodes must use the internal Nexus repository server for RPM packages and container images in the air-gapped environment. The full Nexus build and validation runbook is documented here: [Open Nexus Repository Manager for Air-Gapped Kubespray Deployments](./Scripts,%20appendices%20and%20Configurations//Nexus%20Preparation/Nexus%20Repository%20Manager%20for%20Air-Gapped%20Kubespray%20Deployments.md
+Kubespray nodes must use the internal Nexus repository server for RPM packages and container images in the air-gapped environment. The full Nexus build and validation runbook is documented here: [Open Nexus Repository Manager for Air-Gapped Kubespray Deployments](./Scripts,%20appendices%20and%20Configurations//Nexus%20Preparation/Nexus%20Repository%20Manager%20for%20Air-Gapped%20Kubespray%20Deployments.md)
 
 1) **Push RPMs**  
    - Copy `mnt.tar.gz` to Nexus and extract:
