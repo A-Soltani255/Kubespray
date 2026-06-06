@@ -3,7 +3,7 @@
 ## File Location
 
 ```text
-inventory/shahkar/group_vars/k8s_cluster/k8s-net-custom-cni.yml
+inventory/mycluster/group_vars/k8s_cluster/k8s-net-custom-cni.yml
 ```
 
 ## Purpose
@@ -109,26 +109,26 @@ The recommended production approach is to store sensitive variables using **Ansi
 Example recommended Vault-based approach:
 
 ```bash
-ansible-vault create inventory/shahkar/group_vars/k8s_cluster/vault.yml
+ansible-vault create inventory/mycluster/group_vars/k8s_cluster/vault.yml
 ```
 
 Example Vault content:
 
 ```yaml
-custom_cni_chart_repository_username: "admin"
+custom_cni_chart_repository_username: "<helm_repository_username>"
 custom_cni_chart_repository_password: "<helm_repository_password>"
 ```
 
 Then run Kubespray with:
 
 ```bash
-ansible-playbook -i inventory/shahkar/inventory.ini cluster.yml --ask-vault-pass
+ansible-playbook -i inventory/mycluster/inventory.ini cluster.yml --ask-vault-pass
 ```
 
 However, this document follows the current implementation, where the Helm repository username and password are defined directly in:
 
 ```text
-inventory/shahkar/group_vars/k8s_cluster/k8s-net-custom-cni.yml
+inventory/mycluster/group_vars/k8s_cluster/k8s-net-custom-cni.yml
 ```
 
 ---
@@ -192,7 +192,7 @@ custom_cni_chart_namespace: kube-system
 custom_cni_chart_release_name: "cilium"
 custom_cni_chart_repository_name: "nexus"
 custom_cni_chart_repository_url: "https://repo.shbbl.co/repository/helm/"
-custom_cni_chart_repository_username: "admin"
+custom_cni_chart_repository_username: "<helm_repository_username>"
 custom_cni_chart_repository_password: "<helm_repository_password>"
 custom_cni_chart_ref: "nexus/cilium"
 custom_cni_chart_version: "1.18.6"
@@ -636,7 +636,7 @@ python3 - <<'PY'
 import yaml
 from pathlib import Path
 
-file_path = Path("inventory/shahkar/group_vars/k8s_cluster/k8s-net-custom-cni.yml")
+file_path = Path("inventory/mycluster/group_vars/k8s_cluster/k8s-net-custom-cni.yml")
 
 with file_path.open() as f:
     yaml.safe_load(f)
@@ -648,7 +648,7 @@ PY
 Expected output:
 
 ```text
-YAML syntax is valid: inventory/shahkar/group_vars/k8s_cluster/k8s-net-custom-cni.yml
+YAML syntax is valid: inventory/mycluster/group_vars/k8s_cluster/k8s-net-custom-cni.yml
 ```
 
 ---
@@ -657,7 +657,7 @@ YAML syntax is valid: inventory/shahkar/group_vars/k8s_cluster/k8s-net-custom-cn
 
 ```bash
 grep -nE 'custom_cni_chart_(namespace|release_name|repository_name|repository_url|repository_username|repository_password|ref|version)' \
-  inventory/shahkar/group_vars/k8s_cluster/k8s-net-custom-cni.yml
+  inventory/mycluster/group_vars/k8s_cluster/k8s-net-custom-cni.yml
 ```
 
 This confirms that the required custom CNI Helm variables are defined.
@@ -683,7 +683,7 @@ password: "{{ custom_cni_chart_repository_password | default(omit) }}"
 ## Run Kubespray Syntax Check
 
 ```bash
-ansible-playbook -i inventory/shahkar/inventory.ini cluster.yml --syntax-check
+ansible-playbook -i inventory/mycluster/inventory.ini cluster.yml --syntax-check
 ```
 
 This checks Ansible syntax before applying the deployment.
@@ -691,7 +691,7 @@ This checks Ansible syntax before applying the deployment.
 If Ansible Vault is used, run:
 
 ```bash
-ansible-playbook -i inventory/shahkar/inventory.ini cluster.yml --syntax-check --ask-vault-pass
+ansible-playbook -i inventory/mycluster/inventory.ini cluster.yml --syntax-check --ask-vault-pass
 ```
 
 ---
@@ -701,25 +701,25 @@ ansible-playbook -i inventory/shahkar/inventory.ini cluster.yml --syntax-check -
 Run Kubespray from the Kubespray root directory:
 
 ```bash
-ansible-playbook -i inventory/shahkar/inventory.ini cluster.yml
+ansible-playbook -i inventory/mycluster/inventory.ini cluster.yml
 ```
 
 If privilege escalation requires a password:
 
 ```bash
-ansible-playbook -i inventory/shahkar/inventory.ini cluster.yml --ask-become-pass
+ansible-playbook -i inventory/mycluster/inventory.ini cluster.yml --ask-become-pass
 ```
 
 If Ansible Vault is used:
 
 ```bash
-ansible-playbook -i inventory/shahkar/inventory.ini cluster.yml --ask-vault-pass
+ansible-playbook -i inventory/mycluster/inventory.ini cluster.yml --ask-vault-pass
 ```
 
 If both become password and Vault password are required:
 
 ```bash
-ansible-playbook -i inventory/shahkar/inventory.ini cluster.yml --ask-become-pass --ask-vault-pass
+ansible-playbook -i inventory/mycluster/inventory.ini cluster.yml --ask-become-pass --ask-vault-pass
 ```
 
 ---
@@ -835,7 +835,7 @@ Check:
 
 ```bash
 grep -nE 'custom_cni_chart_repository_username|custom_cni_chart_repository_password' \
-  inventory/shahkar/group_vars/k8s_cluster/k8s-net-custom-cni.yml
+  inventory/mycluster/group_vars/k8s_cluster/k8s-net-custom-cni.yml
 ```
 
 Also verify the role modification exists:
@@ -859,7 +859,7 @@ Expected result should be an HTTP response from Nexus.
 If authentication is required:
 
 ```bash
-curl -k -u 'admin:<helm_repository_password>' -I https://repo.shbbl.co/repository/helm/
+curl -k -u '<helm_repository_username>:<helm_repository_password>' -I https://repo.shbbl.co/repository/helm/
 ```
 
 ---
@@ -929,13 +929,13 @@ This returns the role to unauthenticated Helm repository behavior.
 Restore the previous version of:
 
 ```text
-inventory/shahkar/group_vars/k8s_cluster/k8s-net-custom-cni.yml
+inventory/mycluster/group_vars/k8s_cluster/k8s-net-custom-cni.yml
 ```
 
 If Git is used:
 
 ```bash
-git checkout -- inventory/shahkar/group_vars/k8s_cluster/k8s-net-custom-cni.yml
+git checkout -- inventory/mycluster/group_vars/k8s_cluster/k8s-net-custom-cni.yml
 ```
 
 If the Kubespray role file is also tracked by Git:
@@ -984,7 +984,7 @@ Be careful: removing Cilium from an active cluster can break pod networking.
 
 # Summary
 
-This configuration deploys Cilium as the custom CNI for the Shahkar Kubespray cluster using Helm.
+This configuration deploys Cilium as the custom CNI for the mycluster Kubespray cluster using Helm.
 
 The Helm chart is pulled from the internal Nexus Helm repository:
 
