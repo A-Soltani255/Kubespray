@@ -4,17 +4,20 @@
 ## Global Offline settings
 ### Private Container Image Registry
 # registry_host: "myprivateregisry.com"
-# === Offline root if served by your mini HTTP server ===> files_repo: "http://192.168.154.137:8080"
-# === Offline root served by your raw (hosted) repository ===
-files_repo: "http://192.168.154.133:8081/repository/raw"
+files_repo_host: "nexus.soltani.co"
+files_repo_path: "/repository/raw"
+files_repo_user: "raw"
+files_repo_pass: "V0WECc1tPh2VSjnfKJOLfjrnmKmfKpk"
+
+files_repo: "https://{{ files_repo_user | urlencode }}:{{ files_repo_pass | urlencode }}@{{ files_repo_host }}{{ files_repo_path }}"
+#files_repo: "https://repo.shbbl.co/repository/raw"
 ### If using CentOS, RedHat, AlmaLinux or Fedora
 # yum_repo: "http://myinternalyumrepo"
 ### If using Debian
 # debian_repo: "http://myinternaldebianrepo"
 ### If using Ubuntu
 # ubuntu_repo: "http://myinternalubunturepo"
-
-## Container Registry overrides
+# Container Registry overrides
 # kube_image_repo: "{{ registry_host }}"
 # gcr_image_repo: "{{ registry_host }}"
 # github_image_repo: "{{ registry_host }}"
