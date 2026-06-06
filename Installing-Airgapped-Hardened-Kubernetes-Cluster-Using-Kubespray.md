@@ -4,7 +4,7 @@ _Last updated: 2026-06-03 13:55:51 UTC_
 
 
 ## Introduction:
-This document distills the experience I gained from building this scenario multiple times: a Kubernetes 1.32.5 cluster on Rocky Linux 10 in a fully air-gapped (offline) environment using Kubespray and Sonatype Nexus. It is based on repeated, real deployments and focuses on the meaningful, hard-earned details that matter in practice: mirroring RPMs and container images, staging Kubernetes binaries, configuring containerd with HTTP registry mirrors, pinning versions, disabling non-essential add-ons, and validating the final cluster.
+This document distills the experience I gained from building this scenario multiple times: a Kubernetes 1.34.3 cluster on Rocky Linux 10 in a fully air-gapped (offline) environment using Kubespray and Sonatype Nexus. It is based on repeated, real deployments and focuses on the meaningful, hard-earned details that matter in practice: mirroring RPMs and container images, staging Kubernetes binaries, configuring containerd with HTTP registry mirrors, pinning versions, disabling non-essential add-ons, and validating the final cluster.
 My goal is to give you a reproducible, opinionated path that reflects what actually worked in practice—not just theory.
 
 The environment used throughout:
