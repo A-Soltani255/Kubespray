@@ -1,50 +1,57 @@
-# Kubespray Custom CNI Configuration with Private Helm Repository Authentication
+# Kubespray Custom CNI Configuration with Cilium Helm Chart
 
-## 1. Purpose
-
-This document describes the `inventory/shahkar/group_vars/k8s_cluster/k8s-net-custom-cni.yml` configuration used to deploy **Cilium** as a **custom CNI** through Kubespray by using a Helm chart stored in a private Nexus Helm repository.
-
-This setup uses Kubespray’s `custom_cni` network plugin mode and deploys Cilium through Helm instead of applying static manifest files.
-
-The private Helm repository requires authentication, so the Kubespray `custom_cni` role metadata must be modified to pass the Helm repository username and password to the `helm-apps` role.
-
-> Recommended long-term approach: store the Helm repository password in **Ansible Vault**, HashiCorp Vault, or another secrets-management solution instead of keeping it as plain text in the inventory file.
-> In this document, the username/password method is documented because this is the method currently used for this environment.
-
----
-
-## 2. File Path
-
-The inventory file is located at:
+## File Location
 
 ```text
 inventory/shahkar/group_vars/k8s_cluster/k8s-net-custom-cni.yml
 ```
 
-This file defines the custom CNI deployment method, Helm repository details, Cilium chart version, and Cilium Helm values.
+## Purpose
+
+This file configures Kubespray to deploy a custom Kubernetes CNI plugin.
+
+In this environment, the custom CNI is **Cilium**, and it is deployed through **Kubespray custom CNI Helm chart mode** using a Helm chart stored in the internal Nexus Helm repository.
+
+The selected deployment method is:
+
+```text
+OPTION 2 - Helm chart application
+```
+
+This means Kubespray deploys Cilium as a Helm release instead of applying static Kubernetes manifest files.
 
 ---
 
-## 3. Required Kubespray Role Modification
+## Important Requirement
 
-By default, Kubespray’s `custom_cni` role may not pass repository authentication values to the Helm repository definition.
+The default Kubespray `custom_cni` role does not pass Helm repository authentication variables unless the role dependency is modified.
 
-To support authenticated Helm repositories, modify the following file:
+Because the Helm repository requires authentication, the following variables are used:
+
+```yaml
+custom_cni_chart_repository_username
+custom_cni_chart_repository_password
+```
+
+These variables must be added to the Helm repository definition inside:
 
 ```text
 roles/network_plugin/custom_cni/meta/main.yml
 ```
 
-Create a backup first:
+---
+
+## Required Kubespray Role Modification
+
+Edit the following file:
 
 ```bash
-cp -a roles/network_plugin/custom_cni/meta/main.yml \
-  roles/network_plugin/custom_cni/meta/main.yml.bak.$(date +%F-%H%M%S)
+vi roles/network_plugin/custom_cni/meta/main.yml
 ```
 
-### Required Dependency Configuration
+Update the `repositories` section under the `helm-apps` dependency so it supports `username` and `password`.
 
-The dependency block should include `username` and `password` under the Helm repository definition:
+The expected configuration should look like this:
 
 ```yaml
 dependencies:
@@ -70,60 +77,63 @@ dependencies:
         password: "{{ custom_cni_chart_repository_password | default(omit) }}"
 ```
 
-### Why This Modification Is Required
+### Why This Change Is Needed
 
-The `helm-apps` role receives the repository configuration from this metadata file.
+Kubespray passes Helm repository information to the internal `helm-apps` role.
 
-Without these two lines:
+Without this modification, only the repository name and URL are passed. If the Helm repository requires authentication, Helm cannot pull the chart from Nexus.
 
-```yaml
-username: "{{ custom_cni_chart_repository_username | default(omit) }}"
-password: "{{ custom_cni_chart_repository_password | default(omit) }}"
-```
-
-Kubespray can define the Helm repository URL, but it cannot authenticate to a private Helm repository.
-
-As a result, Helm chart installation may fail with authentication-related errors such as:
-
-```text
-401 Unauthorized
-403 Forbidden
-failed to fetch chart
-repository not found
-```
-
----
-
-## 4. Important Maintenance Note
-
-This is a direct modification to a Kubespray role file.
-
-After upgrading Kubespray, replacing the Kubespray directory, or switching branches, this change may be lost.
-
-After every Kubespray upgrade, verify the following file again:
-
-```text
-roles/network_plugin/custom_cni/meta/main.yml
-```
-
-Check that the repository block still contains:
+These two lines allow authenticated Helm repository access:
 
 ```yaml
 username: "{{ custom_cni_chart_repository_username | default(omit) }}"
 password: "{{ custom_cni_chart_repository_password | default(omit) }}"
 ```
 
+The `default(omit)` filter means:
+
+* If the variable is defined, Kubespray passes it to the Helm repository configuration.
+* If the variable is not defined, Ansible omits the field completely.
+* This keeps the configuration backward-compatible with unauthenticated Helm repositories.
+
 ---
 
-## 5. Custom CNI Configuration File
+## Security Recommendation
 
-Create or update:
+The configuration below uses a plaintext username and password inside the inventory file.
+
+This works, but it is not the safest method.
+
+The recommended production approach is to store sensitive variables using **Ansible Vault** instead of plain YAML.
+
+Example recommended Vault-based approach:
+
+```bash
+ansible-vault create inventory/shahkar/group_vars/k8s_cluster/vault.yml
+```
+
+Example Vault content:
+
+```yaml
+custom_cni_chart_repository_username: "admin"
+custom_cni_chart_repository_password: "<helm_repository_password>"
+```
+
+Then run Kubespray with:
+
+```bash
+ansible-playbook -i inventory/shahkar/inventory.ini cluster.yml --ask-vault-pass
+```
+
+However, this document follows the current implementation, where the Helm repository username and password are defined directly in:
 
 ```text
 inventory/shahkar/group_vars/k8s_cluster/k8s-net-custom-cni.yml
 ```
 
-Recommended sanitized version:
+---
+
+# Custom CNI Configuration
 
 ```yaml
 ---
@@ -158,13 +168,6 @@ Recommended sanitized version:
 ## Helm repository URL
 # custom_cni_chart_repository_url: ""
 #
-## Helm repository authentication
-## NOTE:
-## Plain-text credentials work, but this is not the safest method.
-## Prefer Ansible Vault or another secret-management solution for production.
-# custom_cni_chart_repository_username: ""
-# custom_cni_chart_repository_password: ""
-#
 ## Helm chart reference - path to the chart in the repository
 # custom_cni_chart_ref: ""
 #
@@ -174,14 +177,23 @@ Recommended sanitized version:
 ## Custom Helm values to be used for deployment
 # custom_cni_chart_values: {}
 
-## OPTION 2 EXAMPLE - Cilium deployed from private Nexus Helm repository
+## OPTION 2 EXAMPLE - Cilium deployed from official public Helm chart
+# custom_cni_chart_namespace: kube-system
+# custom_cni_chart_release_name: cilium
+# custom_cni_chart_repository_name: cilium
+# custom_cni_chart_repository_url: https://helm.cilium.io
+# custom_cni_chart_ref: cilium/cilium
+# custom_cni_chart_version: <chart version> (e.g.: 1.14.3)
+# custom_cni_chart_values:
+#   cluster:
+#     name: "cilium-demo"
 
 custom_cni_chart_namespace: kube-system
 custom_cni_chart_release_name: "cilium"
 custom_cni_chart_repository_name: "nexus"
 custom_cni_chart_repository_url: "https://repo.shbbl.co/repository/helm/"
-custom_cni_chart_repository_username: "helm"
-custom_cni_chart_repository_password: "<REPLACE_WITH_HELM_REPOSITORY_PASSWORD>"
+custom_cni_chart_repository_username: "admin"
+custom_cni_chart_repository_password: "<helm_repository_password>"
 custom_cni_chart_ref: "nexus/cilium"
 custom_cni_chart_version: "1.18.6"
 
@@ -189,7 +201,7 @@ custom_cni_chart_values:
   MTU: 0
 
   debug:
-    enabled: false
+    enabled: False
 
   image:
     repository: quay.io/cilium/cilium
@@ -200,13 +212,13 @@ custom_cni_chart_values:
   k8sServicePort: "auto"
 
   ipv4:
-    enabled: true
+    enabled: True
 
   ipv6:
-    enabled: false
+    enabled: False
 
   l2announcements:
-    enabled: false
+    enabled: False
 
   healthPort: 9879
 
@@ -217,7 +229,7 @@ custom_cni_chart_values:
   loadbalancer:
     mode: snat
 
-  kubeProxyReplacement: true
+  kubeProxyReplacement: True
 
   extraVolumes: []
 
@@ -226,44 +238,43 @@ custom_cni_chart_values:
   extraArgs: []
 
   bpf:
-    masquerade: false
-    hostLegacyRouting: false
+    masquerade: False
+    hostLegacyRouting: False
     monitorAggregation: medium
-    preallocateMaps: false
+    preallocateMaps: False
     mapDynamicSizeRatio: 0.0025
 
   cni:
-    exclusive: true
+    exclusive: True
     logFile: /var/run/cilium/cilium-cni.log
 
-  autoDirectNodeRoutes: false
+  autoDirectNodeRoutes: False
 
   ipv4NativeRoutingCIDR:
-
   ipv6NativeRoutingCIDR:
 
   encryption:
-    enabled: false
+    enabled: False
 
   bandwidthManager:
-    enabled: false
-    bbr: false
+    enabled: False
+    bbr: False
 
   ipMasqAgent:
-    enabled: false
+    enabled: False
 
   hubble:
-    enabled: true
+    enabled: True
 
     relay:
-      enabled: true
+      enabled: True
       image:
         repository: quay.io/cilium/hubble-relay
         tag: v1.18.6
         useDigest: false
 
     ui:
-      enabled: true
+      enabled: True
 
       backend:
         image:
@@ -290,17 +301,17 @@ custom_cni_chart_values:
       fileMaxBackups: 5
       fileMaxSizeMb: 10
       dynamic:
-        enabled: false
+        enabled: False
         config:
           content:
-            - name: all
+            - excludeFilters: []
+              fieldMask: []
               filePath: /var/run/cilium/hubble/events.log
               includeFilters: []
-              excludeFilters: []
-              fieldMask: []
+              name: all
 
   gatewayAPI:
-    enabled: false
+    enabled: False
 
   ipam:
     mode: cluster-pool
@@ -315,25 +326,20 @@ custom_cni_chart_values:
 
   cgroup:
     autoMount:
-      enabled: true
+      enabled: True
     hostRoot: /run/cilium/cgroupv2
 
   operator:
-    enabled: true
+    enabled: True
     image:
       repository: quay.io/cilium/operator
       tag: v1.18.6
       genericDigest: "sha256:a5c7859195de9653ec3a23f1303ec7eca7c79a380428037a1bdeacf23187f051"
       useDigest: false
-
     replicas: 2
-
     extraArgs: []
-
     extraVolumes: []
-
     extraVolumeMounts: []
-
     tolerations:
       - operator: Exists
 
@@ -341,11 +347,11 @@ custom_cni_chart_values:
     id: 0
     name: default
 
-  enableIPv4Masquerade: true
-  enableIPv6Masquerade: true
+  enableIPv4Masquerade: True
+  enableIPv6Masquerade: True
 
   hostFirewall:
-    enabled: false
+    enabled: False
 
   certgen:
     image:
@@ -362,217 +368,414 @@ custom_cni_chart_values:
 
 ---
 
-## 6. Important Notes About the Values File
+# Variable Explanation
 
-### 6.1 Repository Credentials
+## Helm Deployment Variables
 
-This file currently uses:
+| Variable                               | Description                                               |
+| -------------------------------------- | --------------------------------------------------------- |
+| `custom_cni_chart_namespace`           | Kubernetes namespace where Cilium will be deployed.       |
+| `custom_cni_chart_release_name`        | Helm release name. In this setup, it is `cilium`.         |
+| `custom_cni_chart_repository_name`     | Local Helm repository name. In this setup, it is `nexus`. |
+| `custom_cni_chart_repository_url`      | Nexus Helm repository URL.                                |
+| `custom_cni_chart_repository_username` | Username used to authenticate to the Helm repository.     |
+| `custom_cni_chart_repository_password` | Password used to authenticate to the Helm repository.     |
+| `custom_cni_chart_ref`                 | Helm chart reference. In this setup, `nexus/cilium`.      |
+| `custom_cni_chart_version`             | Cilium Helm chart version.                                |
+
+---
+
+## Cilium Image Configuration
 
 ```yaml
-custom_cni_chart_repository_username: "helm"
-custom_cni_chart_repository_password: "<REPLACE_WITH_HELM_REPOSITORY_PASSWORD>"
+image:
+  repository: quay.io/cilium/cilium
+  tag: v1.18.6
+  useDigest: false
 ```
 
-This allows Kubespray to authenticate to the Nexus Helm repository.
+This defines the main Cilium agent image.
 
-However, do not commit real passwords to Git.
-
-Better options are:
+The image is pulled from:
 
 ```text
-Ansible Vault
-HashiCorp Vault
-External Secrets Operator
-Sealed Secrets
-SOPS
-CI/CD-provided environment variables
+quay.io/cilium/cilium:v1.18.6
 ```
 
-For this document, plain variables are documented because this is the selected method for this environment.
+In an offline or restricted environment, this image must already exist in the allowed registry or be reachable through the configured image pull path.
 
 ---
 
-### 6.2 Typo Warning
-
-The original values had this key in two places:
+## Kubernetes API Access
 
 ```yaml
-repositry:
+k8sServiceHost: "auto"
+k8sServicePort: "auto"
 ```
 
-That is a typo.
+Cilium automatically detects the Kubernetes API server endpoint.
 
-It should be:
-
-```yaml
-repository:
-```
-
-Affected sections:
-
-```yaml
-certgen:
-  image:
-    repository: quay.io/cilium/certgen
-```
-
-and:
-
-```yaml
-envoy:
-  image:
-    repository: quay.io/cilium/cilium-envoy
-```
-
-If the typo remains, Helm may ignore the custom image repository value and use the chart default instead.
+This is useful in Kubespray deployments because the API endpoint may be managed through the Kubernetes service or through a load balancer, depending on the cluster configuration.
 
 ---
 
-### 6.3 Boolean Style
-
-Use lowercase YAML booleans:
+## IP Version Settings
 
 ```yaml
-true
-false
+ipv4:
+  enabled: True
+
+ipv6:
+  enabled: False
 ```
 
-Instead of:
+IPv4 is enabled and IPv6 is disabled.
+
+Although IPv6 pool values are present later in the file, IPv6 is not active because:
 
 ```yaml
-True
-False
+ipv6:
+  enabled: False
 ```
-
-Both may work depending on the parser, but lowercase booleans are safer and more consistent with Kubernetes and Helm values files.
 
 ---
 
-## 7. Verify Helm Repository Access Manually
+## Tunnel Mode
 
-Before running Kubespray, verify that the Helm repository is reachable from the Kubespray machine.
+```yaml
+tunnelProtocol: vxlan
+```
+
+Cilium uses VXLAN encapsulation for pod-to-pod traffic between nodes.
+
+This is useful when the underlay network does not directly route pod CIDRs between Kubernetes nodes.
+
+---
+
+## Load Balancer Mode
+
+```yaml
+loadbalancer:
+  mode: snat
+```
+
+Cilium load balancing uses SNAT mode.
+
+This means return traffic is handled through source NAT, which is usually simpler to operate when the external network does not have routes back to pod IPs.
+
+---
+
+## kube-proxy Replacement
+
+```yaml
+kubeProxyReplacement: True
+```
+
+Cilium replaces kube-proxy functionality using eBPF.
+
+With this setting enabled, Kubernetes service handling is performed by Cilium instead of kube-proxy.
+
+Important notes:
+
+* kube-proxy should not be deployed or should be disabled by Kubespray.
+* Cilium must be healthy before relying on Kubernetes service networking.
+* Wrong kube-proxy replacement settings can break service connectivity.
+
+---
+
+## BPF Settings
+
+```yaml
+bpf:
+  masquerade: False
+  hostLegacyRouting: False
+  monitorAggregation: medium
+  preallocateMaps: False
+  mapDynamicSizeRatio: 0.0025
+```
+
+These settings control Cilium eBPF behavior.
+
+| Setting               | Description                                      |
+| --------------------- | ------------------------------------------------ |
+| `masquerade`          | Controls BPF-based masquerading.                 |
+| `hostLegacyRouting`   | Controls whether legacy host routing is used.    |
+| `monitorAggregation`  | Controls Cilium monitor event aggregation level. |
+| `preallocateMaps`     | Controls whether BPF maps are preallocated.      |
+| `mapDynamicSizeRatio` | Controls dynamic BPF map sizing.                 |
+
+---
+
+## CNI Settings
+
+```yaml
+cni:
+  exclusive: True
+  logFile: /var/run/cilium/cilium-cni.log
+```
+
+`exclusive: True` means Cilium takes ownership of CNI configuration on the nodes.
+
+This is the expected setting when Cilium is the only CNI plugin for the cluster.
+
+The CNI log file is stored at:
+
+```text
+/var/run/cilium/cilium-cni.log
+```
+
+---
+
+## IPAM Configuration
+
+```yaml
+ipam:
+  mode: cluster-pool
+  operator:
+    clusterPoolIPv4PodCIDRList:
+      - 10.233.64.0/18
+    clusterPoolIPv4MaskSize: 24
+```
+
+Cilium uses cluster-pool IPAM mode.
+
+The pod CIDR pool is:
+
+```text
+10.233.64.0/18
+```
+
+Each node receives a `/24` pod CIDR from this pool.
+
+Important:
+
+This CIDR must match the Kubernetes/Kubespray pod network design. Do not change it after deployment unless you are intentionally rebuilding or carefully migrating the cluster network.
+
+---
+
+## Hubble Configuration
+
+```yaml
+hubble:
+  enabled: True
+  relay:
+    enabled: True
+  ui:
+    enabled: True
+```
+
+Hubble is enabled for Cilium observability.
+
+This deploys:
+
+* Hubble Relay
+* Hubble UI
+* Hubble metrics
+
+Enabled Hubble metrics:
+
+```yaml
+metrics:
+  enabled:
+    - dns
+    - drop
+    - tcp
+    - flow
+    - icmp
+    - http
+```
+
+These metrics help observe network flows, dropped packets, DNS traffic, TCP traffic, ICMP traffic, and HTTP traffic.
+
+---
+
+## Cilium Operator
+
+```yaml
+operator:
+  enabled: True
+  replicas: 2
+```
+
+The Cilium operator is enabled with two replicas.
+
+This provides better availability than a single operator replica.
+
+The operator image is:
+
+```text
+quay.io/cilium/operator:v1.18.6
+```
+
+---
+
+## Cluster Identity
+
+```yaml
+cluster:
+  id: 0
+  name: default
+```
+
+This defines the Cilium cluster identity.
+
+For a single cluster, this is acceptable.
+
+For multi-cluster or ClusterMesh environments, use a unique cluster ID and cluster name.
+
+---
+
+# Validation Commands
+
+## Validate YAML Syntax
+
+From the Kubespray root directory:
 
 ```bash
-helm repo add nexus https://repo.shbbl.co/repository/helm/ \
-  --username helm \
-  --password '<REPLACE_WITH_HELM_REPOSITORY_PASSWORD>'
+python3 - <<'PY'
+import yaml
+from pathlib import Path
 
-helm repo update
+file_path = Path("inventory/shahkar/group_vars/k8s_cluster/k8s-net-custom-cni.yml")
 
-helm search repo nexus/cilium --versions | head
+with file_path.open() as f:
+    yaml.safe_load(f)
+
+print(f"YAML syntax is valid: {file_path}")
+PY
 ```
 
-Expected result:
+Expected output:
 
 ```text
-NAME            CHART VERSION   APP VERSION
-nexus/cilium    1.18.6          1.18.6
+YAML syntax is valid: inventory/shahkar/group_vars/k8s_cluster/k8s-net-custom-cni.yml
 ```
-
-If this fails, Kubespray will also fail during the CNI deployment stage.
 
 ---
 
-## 8. Verify Kubespray Inventory Syntax
+## Verify the Custom CNI Variables
 
-Run:
+```bash
+grep -nE 'custom_cni_chart_(namespace|release_name|repository_name|repository_url|repository_username|repository_password|ref|version)' \
+  inventory/shahkar/group_vars/k8s_cluster/k8s-net-custom-cni.yml
+```
+
+This confirms that the required custom CNI Helm variables are defined.
+
+---
+
+## Verify the Role Modification
+
+```bash
+grep -nE 'username|password|custom_cni_chart_repository' \
+  roles/network_plugin/custom_cni/meta/main.yml
+```
+
+Expected result should include:
+
+```yaml
+username: "{{ custom_cni_chart_repository_username | default(omit) }}"
+password: "{{ custom_cni_chart_repository_password | default(omit) }}"
+```
+
+---
+
+## Run Kubespray Syntax Check
 
 ```bash
 ansible-playbook -i inventory/shahkar/inventory.ini cluster.yml --syntax-check
 ```
 
-Expected result:
+This checks Ansible syntax before applying the deployment.
 
-```text
-playbook: cluster.yml
+If Ansible Vault is used, run:
+
+```bash
+ansible-playbook -i inventory/shahkar/inventory.ini cluster.yml --syntax-check --ask-vault-pass
 ```
-
-If there is a YAML indentation issue, Ansible will fail before starting deployment.
 
 ---
 
-## 9. Verify Custom CNI Variables Are Loaded
+# Deployment Command
 
-Run:
-
-```bash
-ansible -i inventory/shahkar/inventory.ini \
-  groups['kube_control_plane'][0] \
-  -m debug \
-  -a 'var=custom_cni_chart_release_name'
-```
-
-If the above host-pattern syntax does not work in your shell, test against the first control-plane node directly:
+Run Kubespray from the Kubespray root directory:
 
 ```bash
-ansible -i inventory/shahkar/inventory.ini <FIRST_CONTROL_PLANE_HOSTNAME> \
-  -m debug \
-  -a 'var=custom_cni_chart_release_name'
+ansible-playbook -i inventory/shahkar/inventory.ini cluster.yml
 ```
 
-Expected value:
-
-```text
-cilium
-```
-
-Also verify the repository name:
+If privilege escalation requires a password:
 
 ```bash
-ansible -i inventory/shahkar/inventory.ini <FIRST_CONTROL_PLANE_HOSTNAME> \
-  -m debug \
-  -a 'var=custom_cni_chart_repository_name'
+ansible-playbook -i inventory/shahkar/inventory.ini cluster.yml --ask-become-pass
 ```
 
-Expected value:
+If Ansible Vault is used:
 
-```text
-nexus
+```bash
+ansible-playbook -i inventory/shahkar/inventory.ini cluster.yml --ask-vault-pass
 ```
 
-Do not print the password in logs unless you are troubleshooting in a secure terminal.
+If both become password and Vault password are required:
+
+```bash
+ansible-playbook -i inventory/shahkar/inventory.ini cluster.yml --ask-become-pass --ask-vault-pass
+```
 
 ---
 
-## 10. Deploy the Cluster
+# Post-Deployment Verification
 
-Run Kubespray normally:
-
-```bash
-ansible-playbook -i inventory/shahkar/inventory.ini cluster.yml -b
-```
-
-If the cluster already exists and only CNI-related changes are required, use the appropriate Kubespray recovery or upgrade playbook based on the current cluster state. Do not blindly rerun the full cluster deployment on production without checking impact.
-
----
-
-## 11. Post-Deployment Verification
-
-After deployment, verify Cilium pods:
+## Check Cilium Pods
 
 ```bash
 kubectl -n kube-system get pods -l k8s-app=cilium -o wide
 ```
 
-Verify Cilium operator:
+Expected result:
 
-```bash
-kubectl -n kube-system get pods -l io.cilium/app=operator -o wide
+```text
+cilium-xxxxx   1/1   Running
 ```
 
-Verify Cilium status:
+There should be one Cilium agent pod per Kubernetes node.
+
+---
+
+## Check Cilium Operator
+
+```bash
+kubectl -n kube-system get pods -l name=cilium-operator -o wide
+```
+
+Expected result:
+
+```text
+cilium-operator-xxxxx   1/1   Running
+cilium-operator-yyyyy   1/1   Running
+```
+
+---
+
+## Check Cilium Status
 
 ```bash
 kubectl -n kube-system exec ds/cilium -- cilium status
 ```
 
-Verify Cilium nodes:
+Expected important fields:
 
-```bash
-kubectl get ciliumnodes
+```text
+KVStore:                 Ok
+Kubernetes:              Ok
+Kubernetes APIs:         Ok
+Cilium:                  Ok
+Operator:                Ok
 ```
 
-Verify Kubernetes nodes:
+---
+
+## Check Kubernetes Nodes
 
 ```bash
 kubectl get nodes -o wide
@@ -586,232 +789,214 @@ Ready    control-plane   ...
 Ready    worker          ...
 ```
 
+All nodes should be in `Ready` state.
+
 ---
 
-## 12. Verify Hubble
+## Check Cilium CNI Log on a Node
 
-Check Hubble Relay:
-
-```bash
-kubectl -n kube-system get pods -l k8s-app=hubble-relay -o wide
-```
-
-Check Hubble UI:
+Run this on a Kubernetes node:
 
 ```bash
-kubectl -n kube-system get pods -l k8s-app=hubble-ui -o wide
+sudo tail -n 100 /var/run/cilium/cilium-cni.log
 ```
 
-If needed, port-forward Hubble UI:
+This helps troubleshoot CNI plugin execution issues during pod creation.
+
+---
+
+## Check Hubble Components
 
 ```bash
-kubectl -n kube-system port-forward svc/hubble-ui 12000:80
+kubectl -n kube-system get pods | grep hubble
 ```
 
-Then open:
+Expected components:
 
 ```text
-http://127.0.0.1:12000
+hubble-relay
+hubble-ui
 ```
 
 ---
 
-## 13. Common Failure Points
+# Troubleshooting
 
-### 13.1 Helm Repository Authentication Failure
+## Helm Repository Authentication Failure
 
 Possible error:
 
 ```text
+failed to fetch chart from repository
 401 Unauthorized
-403 Forbidden
-failed to fetch chart
 ```
 
 Check:
 
 ```bash
-helm repo add nexus https://repo.shbbl.co/repository/helm/ \
-  --username helm \
-  --password '<REPLACE_WITH_HELM_REPOSITORY_PASSWORD>'
+grep -nE 'custom_cni_chart_repository_username|custom_cni_chart_repository_password' \
+  inventory/shahkar/group_vars/k8s_cluster/k8s-net-custom-cni.yml
 ```
 
-If manual Helm login fails, fix Nexus credentials or repository permissions before running Kubespray again.
+Also verify the role modification exists:
+
+```bash
+grep -nE 'username|password' roles/network_plugin/custom_cni/meta/main.yml
+```
 
 ---
 
-### 13.2 Missing Kubespray Role Modification
+## Helm Repository Not Reachable
 
-If `roles/network_plugin/custom_cni/meta/main.yml` does not include:
+Test from the Kubespray machine:
+
+```bash
+curl -k -I https://repo.shbbl.co/repository/helm/
+```
+
+Expected result should be an HTTP response from Nexus.
+
+If authentication is required:
+
+```bash
+curl -k -u 'admin:<helm_repository_password>' -I https://repo.shbbl.co/repository/helm/
+```
+
+---
+
+## Cilium Pods Not Running
+
+Check pod status:
+
+```bash
+kubectl -n kube-system get pods -o wide
+```
+
+Check events:
+
+```bash
+kubectl -n kube-system describe pod <cilium-pod-name>
+```
+
+Check logs:
+
+```bash
+kubectl -n kube-system logs <cilium-pod-name>
+```
+
+---
+
+## Nodes Are Not Ready
+
+Check node condition:
+
+```bash
+kubectl describe node <node-name>
+```
+
+Common causes:
+
+* Cilium pods are not running.
+* CNI configuration was not installed.
+* Pod CIDR is wrong.
+* Required kernel features are missing.
+* Firewall is blocking VXLAN or Kubernetes API traffic.
+* kube-proxy replacement setting does not match the cluster design.
+
+---
+
+# Rollback
+
+## Roll Back the Role Modification
+
+If the Helm repository authentication change causes problems, remove these two lines from:
+
+```text
+roles/network_plugin/custom_cni/meta/main.yml
+```
 
 ```yaml
 username: "{{ custom_cni_chart_repository_username | default(omit) }}"
 password: "{{ custom_cni_chart_repository_password | default(omit) }}"
 ```
 
-Kubespray will not pass authentication to Helm.
-
-Fix the role metadata and rerun the playbook.
+This returns the role to unauthenticated Helm repository behavior.
 
 ---
 
-### 13.3 Incorrect Chart Reference
+## Roll Back the Inventory File
 
-The chart reference must match the Helm repository name and chart name:
-
-```yaml
-custom_cni_chart_repository_name: "nexus"
-custom_cni_chart_ref: "nexus/cilium"
-```
-
-If the repository name changes, the chart reference must also change.
-
-Example:
-
-```yaml
-custom_cni_chart_repository_name: "private-helm"
-custom_cni_chart_ref: "private-helm/cilium"
-```
-
----
-
-### 13.4 Wrong Image Repository Key
-
-Use:
-
-```yaml
-repository:
-```
-
-Do not use:
-
-```yaml
-repositry:
-```
-
-The typo may cause Helm to ignore the custom image path.
-
----
-
-### 13.5 Cilium Pods Not Ready
-
-Check Cilium pod logs:
-
-```bash
-kubectl -n kube-system logs -l k8s-app=cilium --tail=100
-```
-
-Check Cilium operator logs:
-
-```bash
-kubectl -n kube-system logs -l io.cilium/app=operator --tail=100
-```
-
-Check events:
-
-```bash
-kubectl -n kube-system get events --sort-by=.lastTimestamp | tail -50
-```
-
----
-
-## 14. Rollback
-
-### 14.1 Restore Kubespray Role Metadata Backup
-
-If the modification causes issues, restore the backup:
-
-```bash
-cp -a roles/network_plugin/custom_cni/meta/main.yml.bak.<DATE> \
-  roles/network_plugin/custom_cni/meta/main.yml
-```
-
-Replace `<DATE>` with the actual backup suffix.
-
----
-
-### 14.2 Remove Helm Repository from Local Helm Client
-
-This only affects the local Helm client cache on the Kubespray machine:
-
-```bash
-helm repo remove nexus
-```
-
----
-
-### 14.3 Remove Cilium Helm Release
-
-Only do this if you are intentionally removing Cilium from the cluster.
-
-```bash
-helm -n kube-system uninstall cilium
-```
-
-Warning: removing the active CNI from a running cluster can break pod networking. Do not run this on production unless you have a tested recovery plan.
-
----
-
-## 15. Security Recommendation
-
-The current method works, but it stores repository credentials as plain text:
-
-```yaml
-custom_cni_chart_repository_username: "helm"
-custom_cni_chart_repository_password: "<REPLACE_WITH_HELM_REPOSITORY_PASSWORD>"
-```
-
-For a safer production design, encrypt the password with Ansible Vault:
-
-```bash
-ansible-vault encrypt_string '<REPLACE_WITH_HELM_REPOSITORY_PASSWORD>' \
-  --name 'custom_cni_chart_repository_password'
-```
-
-Example output:
-
-```yaml
-custom_cni_chart_repository_password: !vault |
-  $ANSIBLE_VAULT;1.1;AES256
-  ...
-```
-
-Then keep the encrypted value in:
+Restore the previous version of:
 
 ```text
 inventory/shahkar/group_vars/k8s_cluster/k8s-net-custom-cni.yml
 ```
 
-Run Kubespray with:
+If Git is used:
 
 ```bash
-ansible-playbook -i inventory/shahkar/inventory.ini cluster.yml -b --ask-vault-pass
+git checkout -- inventory/shahkar/group_vars/k8s_cluster/k8s-net-custom-cni.yml
 ```
 
-Or with a vault password file:
+If the Kubespray role file is also tracked by Git:
 
 ```bash
-ansible-playbook -i inventory/shahkar/inventory.ini cluster.yml -b \
-  --vault-password-file /secure/path/vault-pass.txt
+git checkout -- roles/network_plugin/custom_cni/meta/main.yml
 ```
-
-This keeps the same variable name while avoiding plain-text secrets in Git.
 
 ---
 
-## 16. Final Checklist
+## Remove Failed Cilium Helm Release Manually
 
-Before deployment, verify:
+Only do this if Kubespray deployment failed and left a broken Helm release behind.
+
+```bash
+helm -n kube-system list
+```
+
+If the failed release exists:
+
+```bash
+helm -n kube-system uninstall cilium
+```
+
+Then verify:
+
+```bash
+kubectl -n kube-system get pods | grep cilium
+```
+
+Be careful: removing Cilium from an active cluster can break pod networking.
+
+---
+
+# Operational Notes
+
+* Keep `custom_cni_chart_version` aligned with the Cilium image tag.
+* Confirm the Cilium chart exists in the Nexus Helm repository before running Kubespray.
+* Confirm all required Cilium images are available to the cluster.
+* Do not change the pod CIDR after cluster deployment unless you are rebuilding or performing a planned migration.
+* Avoid committing real repository credentials to Git.
+* Prefer Ansible Vault for long-term credential management.
+* After modifying files under `roles/`, document the change clearly because future Kubespray upgrades may overwrite it.
+
+---
+
+# Summary
+
+This configuration deploys Cilium as the custom CNI for the Shahkar Kubespray cluster using Helm.
+
+The Helm chart is pulled from the internal Nexus Helm repository:
 
 ```text
-[ ] network_plugin is set to custom_cni in the Kubespray inventory.
-[ ] k8s-net-custom-cni.yml exists under inventory/shahkar/group_vars/k8s_cluster/.
-[ ] The private Nexus Helm repository is reachable from the Kubespray machine.
-[ ] Helm authentication works manually.
-[ ] roles/network_plugin/custom_cni/meta/main.yml includes username and password fields.
-[ ] The Cilium chart version exists in the Nexus Helm repository.
-[ ] Image repositories are reachable from all Kubernetes nodes.
-[ ] The password is not committed to Git in plain text unless this is explicitly accepted for the environment.
-[ ] The original typo repositry has been corrected to repository.
-[ ] Ansible syntax-check passes.
+https://repo.shbbl.co/repository/helm/
 ```
+
+Because the repository requires authentication, the Kubespray `custom_cni` role must be modified to pass:
+
+```yaml
+custom_cni_chart_repository_username
+custom_cni_chart_repository_password
+```
+
+The current document uses plaintext variables for compatibility with the existing deployment method, but the recommended secure approach is to move the credentials into Ansible Vault.
