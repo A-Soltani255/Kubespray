@@ -24,7 +24,8 @@ local_release_dir: "/tmp/releases"
 # Random shifts for retrying failed ops like pushing/downloading
 retry_stagger: 5
 
-# This is the user that owns tha cluster installation.
+# This is the user that owns the cluster installation.
+# Note: cilium needs to set kube_owner to root https://kubespray.io/#/docs/CNI/cilium?id=unprivileged-agent-configuration
 kube_owner: kube
 
 # This is the group that the cert creation scripts chgrp the
@@ -64,11 +65,9 @@ credentials_dir: "{{ inventory_dir }}/credentials"
 # kube_webhook_authorization_url: https://...
 # kube_webhook_authorization_url_skip_tls_verify: false
 
-# Choose network plugin (cilium, calico, kube-ovn, weave or flannel. Use cni for generic cni plugin)
+# Choose network plugin (cilium, calico, kube-ovn or flannel. Use cni for generic cni plugin)
 # Can also be set to 'cloud', which lets the cloud provider setup appropriate routing
-# kube_network_plugin: cilium
-# it’s set because Cilium is going to installed via Helm using the inventory/shahkar/group_vars/k8s_cluster/k8s-net-custom-cni.yml file
-kube_network_plugin: custom_cni 
+kube_network_plugin: custom_cni
 
 # Setting multi_networking to true will install Multus: https://github.com/k8snetworkplumbingwg/multus-cni
 kube_network_plugin_multus: false
@@ -147,8 +146,8 @@ kube_encrypt_secret_data: false
 # Graceful Node Shutdown (Kubernetes >= 1.21.0), see https://kubernetes.io/blog/2021/04/21/graceful-node-shutdown-beta/
 # kubelet_shutdown_grace_period had to be greater than kubelet_shutdown_grace_period_critical_pods to allow
 # non-critical podsa to also terminate gracefully
-kubelet_shutdown_grace_period: 60s
-kubelet_shutdown_grace_period_critical_pods: 20s
+# kubelet_shutdown_grace_period: 60s
+# kubelet_shutdown_grace_period_critical_pods: 20s
 
 # DNS configuration.
 # Kubernetes cluster name, also will be used as DNS domain
@@ -258,25 +257,25 @@ default_kubelet_config_dir: "{{ kube_config_dir }}/dynamic_kubelet_dir"
 # kubelet_kubelet_cgroups_cgroupfs: "/system.slice/kubelet.service"
 
 # Whether to run kubelet and container-engine daemons in a dedicated cgroup.
-kube_reserved: true
+# kube_reserved: false
 ## Uncomment to override default values
 ## The following two items need to be set when kube_reserved is true
-kube_reserved_cgroups_for_service_slice: kube.slice
-kube_reserved_cgroups: "/{{ kube_reserved_cgroups_for_service_slice }}"
-kube_memory_reserved: 512Mi
-kube_cpu_reserved: 250m
-kube_ephemeral_storage_reserved: 2Gi
-kube_pid_reserved: "1000"
+# kube_reserved_cgroups_for_service_slice: kube.slice
+# kube_reserved_cgroups: "/{{ kube_reserved_cgroups_for_service_slice }}"
+# kube_memory_reserved: 256Mi
+# kube_cpu_reserved: 100m
+# kube_ephemeral_storage_reserved: 2Gi
+# kube_pid_reserved: "1000"
 
 ## Optionally reserve resources for OS system daemons.
-system_reserved: true
+# system_reserved: true
 ## Uncomment to override default values
 ## The following two items need to be set when system_reserved is true
-system_reserved_cgroups_for_service_slice: system.slice
-system_reserved_cgroups: "/{{ system_reserved_cgroups_for_service_slice }}"
-system_memory_reserved: 1024Mi
-system_cpu_reserved: 500m
-system_ephemeral_storage_reserved: 3Gi
+# system_reserved_cgroups_for_service_slice: system.slice
+# system_reserved_cgroups: "/{{ system_reserved_cgroups_for_service_slice }}"
+# system_memory_reserved: 512Mi
+# system_cpu_reserved: 500m
+# system_ephemeral_storage_reserved: 2Gi
 
 ## Eviction Thresholds to avoid system OOMs
 # https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/#eviction-thresholds
@@ -288,16 +287,20 @@ system_ephemeral_storage_reserved: 3Gi
 
 ## Supplementary addresses that can be added in kubernetes ssl keys.
 ## That can be useful for example to setup a keepalived virtual IP
+# supplementary_addresses_in_ssl_keys: [10.0.0.1, 10.0.0.2, 10.0.0.3]
 supplementary_addresses_in_ssl_keys:
-  - apiserver.mycluster.co
-  - apiserver
-  - master1
-  - master2
-  - master3
-  - 192.168.154.137  # kubespray IP
-  - 192.168.154.131  # master1 IP
-  - 192.168.154.132  # master2 IP
-  - 192.168.154.134  # master3 IP
+  - apiserver.soltani.co
+  - master1.soltani.co
+  - master2.soltani.co
+  - master3.soltani.co
+  - 192.168.10.100       # HaProxy (apiserver.soltani.co) IP
+  - 172.40.10.1          # master1.soltani.co MGMT IP
+  - 172.40.10.2          # master2.soltani.co MGMT IP
+  - 172.40.10.3          # master3.soltani.co MGMT IP
+  - 192.168.10.1         # master1.soltani.co DATA IP
+  - 192.168.10.2         # master2.soltani.co DATA IP
+  - 192.168.10.3         # master3.soltani.co DATA IP
+
 
 ## Running on top of openstack vms with cinder enabled may lead to unschedulable pods due to NoVolumeZoneConflict restriction in kube-scheduler.
 ## See https://github.com/kubernetes-sigs/kubespray/issues/2141
@@ -357,9 +360,9 @@ tls_min_version: "VersionTLS12"
 event_ttl_duration: "1h0m0s"
 
 ## Automatically renew K8S control plane certificates on first Monday of each month
-auto_renew_certificates: true
+auto_renew_certificates: false
 # First Monday of each month
-auto_renew_certificates_systemd_calendar: "Mon *-*-1,2,3,4,5,6,7 03:{{ groups['kube_control_plane'].index(inventory_hostname) }}0:00"
+# auto_renew_certificates_systemd_calendar: "Mon *-*-1,2,3,4,5,6,7 03:00:00"
 
 kubeadm_patches_dir: "{{ kube_config_dir }}/patches"
 kubeadm_patches: []
