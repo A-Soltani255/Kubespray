@@ -47,39 +47,31 @@
 
 # Registries defined within containerd.
 containerd_registries_mirrors:
- - prefix: docker.io
-   mirrors:
-    - host: http://192.168.154.133:5000
-      capabilities: ["pull", "resolve"]
-      skip_verify: false
- - prefix: quay.io
-   mirrors:
-    - host: http://192.168.154.133:5002
-      capabilities: ["pull", "resolve"]
-      skip_verify: false
- - prefix: registry.k8s.io
-   mirrors:
-    - host: http://192.168.154.133:5001
-      capabilities: ["pull", "resolve"]
-      skip_verify: false
- - prefix: ghcr.io
-   mirrors:
-    - host: http://192.168.154.133:5003
-      capabilities: ["pull", "resolve"]
-      skip_verify: false
-
-# containerd_max_container_log_line_size: 16384
-
-containerd_registry_auth:
-  - registry: 192.168.154.133:5000
-    username: admin
-    password: admin
-  - registry: 192.168.154.133:5001
-    username: admin
-    password: admin
-  - registry: 192.168.154.133:5002
-    username: admin
-    password: admin
-  - registry: 192.168.154.133:5003
-    username: admin
-    password: admin
+  - prefix: "docker.io"
+    mirrors:
+      - host: "https://nexus.soltani.co:5000"
+        capabilities: ["pull", "resolve"]
+        skip_verify: false
+        header:
+          Authorization: "Basic a3ViZTpBU0R3c3gqJVFXRTEyMw=="
+  - prefix: "registry.k8s.io"
+    mirrors:
+      - host: "https://nexus.soltani.co:5001"
+        capabilities: ["pull", "resolve"]
+        skip_verify: false
+        header:
+          Authorization: "Basic a3ViZTpBU0R3c3gqJVFXRTEyMw=="
+  - prefix: "quay.io"
+    mirrors:
+      - host: "https://nexus.soltani.co:5002"
+        capabilities: ["pull", "resolve"]
+        skip_verify: false
+        header:
+          Authorization: "Basic a3ViZTpBU0R3c3gqJVFXRTEyMw=="
+  - prefix: "ghcr.io"
+    mirrors:
+      - host: "https://nexus.soltani.co:5003"
+        capabilities: ["pull", "resolve"]
+        skip_verify: false
+        header:
+          Authorization: "Basic a3ViZTpBU0R3c3gqJVFXRTEyMw=="
