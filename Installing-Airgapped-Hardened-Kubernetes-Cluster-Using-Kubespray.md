@@ -132,10 +132,10 @@ With this foundation, you can move straight into the procedural sections and bui
 
 We have **two different networks** for the Kubernetes nodes:
 
-|        Plane       |       Subnet       |                     Purpose                     | Firewalld zone |
-| ------------------ | -----------------: | ----------------------------------------------- | -------------- |
-| Management network |  `172.40.10.0/24`  | SSH, Kubespray access, monitoring/admin traffic | `k8s-mgmt`     |
-| Data network       | `192.168.10.0/24`  | Kubernetes internal traffic between nodes       | `k8s-data`     |
+|        Plane       |       Subnet        |                     Purpose                     | Firewalld zone |
+| ------------------ | ------------------- | ----------------------------------------------- | -------------- |
+| Management network |  `172.40.10.0/24`   | SSH, Kubespray access, monitoring/admin traffic |   `k8s-mgmt`   |
+|    Data network    |  `192.168.10.0/24`  |    Kubernetes internal traffic between nodes    |   `k8s-data`   |
 
 Think of every Kubernetes node as having two doors:
 
