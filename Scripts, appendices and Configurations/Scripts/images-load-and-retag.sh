@@ -10,10 +10,10 @@ PUSH="${PUSH:-0}"                                    # set PUSH=1 to push after 
 
 # upstream -> internal registry map
 declare -A MAP=(
-  ["docker.io"]="192.168.154.133:5000"
-  ["registry.k8s.io"]="192.168.154.133:5001"
-  ["quay.io"]="192.168.154.133:5002"
-  ["ghcr.io"]="192.168.154.133:5003"
+  ["docker.io"]="192.168.10.20:5000"
+  ["registry.k8s.io"]="192.168.10.20:5001"
+  ["quay.io"]="192.168.10.20:5002"
+  ["ghcr.io"]="192.168.10.20:5003"
 )
 
 shopt -s nullglob
@@ -68,6 +68,6 @@ echo "Done."
 
 # This Bash script is designed to automate the process of loading, retagging, and optionally pushing Docker/container images that have been previously saved as archive files (.tar or .tar.gz).
 # It first reads image archives from a specified directory (/opt/container-images by default) and loads them into the local container runtime (using docker or nerdctl).
-# The script assumes the loaded images are currently tagged with a source hub and namespace (e.g., 192.168.154.133:4000/kubespray/).
-# It then uses a hardcoded associative map to translate the original upstream registry (like docker.io or registry.k8s.io) found within the image name to a new internal registry address (e.g., 192.168.154.133:5000).
+# The script assumes the loaded images are currently tagged with a source hub and namespace (e.g., 192.168.10.20:4000/kubespray/).
+# It then uses a hardcoded associative map to translate the original upstream registry (like docker.io or registry.k8s.io) found within the image name to a new internal registry address (e.g., 192.168.10.20:5000).
 # Finally, the image is retagged with the new internal registry destination, and if the PUSH variable is set to 1, the newly tagged image is pushed to that internal repository.
