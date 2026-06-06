@@ -25,26 +25,8 @@ This document is written as a practical runbook. It is intentionally long, expli
 
 ## 0. How this document fits into the Kubespray documentation
 
-This document should be referenced from the main Kubespray build guide before the node-preparation and cluster-deployment sections.
+This document is referenced from the main Kubespray build guide before the node preparation and cluster deployment sections.
 
-Recommended placement:
-
-```text
-Kubespray Documentation
-├── 01-prerequisites.md
-├── 02-offline-repositories.md        <-- link to this document here
-├── 03-node-preparation.md
-├── 04-kubespray-inventory.md
-├── 05-cluster-deployment.md
-└── Scripts, appendices and Configurations/
-    └── Nexus Repository Manager for Air-Gapped Kubespray Deployments.md
-```
-
-Recommended link from the main Kubespray Markdown file:
-
-```markdown
-[Open Nexus Repository Manager for Air-Gapped Kubespray Deployments](./Scripts,%20appendices%20and%20Configurations/Nexus%20Repository%20Manager%20for%20Air-Gapped%20Kubespray%20Deployments.md)
-```
 
 ### 0.1 Why Kubespray needs this server
 
