@@ -234,7 +234,7 @@ Think of every Kubernetes node as having two doors:
    Firewalld must be configured before or during the Kubespray deployment to separate management-plane traffic from Kubernetes data-plane traffic.
    The full firewalld configuration, including custom zones, services, ipsets, rich rules, Cilium traffic, master-only rules, worker-only rules, verification commands, and rollback steps is documented here:
    
-   [Open Kubespray Firewalld Configuration](./Scripts,%20appendices%20and%20Configurations/Firewalld%20Configuration.md)
+   [Open Kubespray Firewalld Configuration](./Scripts,%20appendices%20and%20Configurations/Firewalld%20Preparation/Firewalld%20Configuration.md)
 
    **Alternative:** If firewall filtering is handled by an external firewall or security appliance, `firewalld` can be disabled on the Kubernetes nodes:
    ```bash
