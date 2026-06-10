@@ -483,7 +483,7 @@ tar xvzf offline-files.tar.gz
 ```bash
 nohup python3.12 -m http.server 8080 --directory /srv/offline-files >/var/log/offline-files-http.log 2>&1 &
 echo $! > /var/run/offline-files-http.pid
-# files_repo => http://192.168.154.137:8080
+# files_repo => http://kubespray.soltani.co:8080
 ```
 
 ### 3.2.2) Option2 (Recommended) ---> Serve them via an raw (hosted) repository on nexus named **files**:
@@ -508,21 +508,21 @@ cp -r offline-files/* raw
 FILES=$(find raw -type f)
 
 # Push the files to the repository named raw (replace the repository URL with your own values), which is a **raw (hosted)** repository in Nexus Repository Manager.
-for i in $FILES; do curl -v --user 'admin:admin' --upload-file $i http://192.168.154.133:8081/repository/${i}; done
+for i in $FILES; do curl -v --user 'raw_repository_user:raw_repository_password' --upload-file $i https://nexus.soltani.co/repository/${i}; done
 
-# files_repo => http://192.168.154.133:8081/repository/raw
+# files_repo => https://nexus.soltani.co/repository/raw
 
 ```
 
-### 3.3) HAProxy (on the **Kubespray host** 192.168.154.137)
+### 3.3) HAProxy (on the **Kubespray host** 192.168.10.100)
 
-HAProxy provides a single, stable control-plane endpoint and L4 pass-through for app NodePorts. In this setup, HAProxy runs **on the same VM as Kubespray** (`192.168.154.137`). 
+HAProxy provides a single, stable control-plane endpoint and L4 pass-through for app NodePorts. In this setup, HAProxy runs **on the same VM as Kubespray** (`192.168.10.100`). 
 
 I only used a single HAProxy here to keep this scenario closer to reality. I didn’t implement HAProxy with Keepalived when I set up this scenario multiple times, because all of that infrastructure was using a VIP, so I didn’t need to load balance requests to the master and worker nodes. Instead, I asked the network administrator to forward the requests as follows: traffic to VIP port 6443 → master nodes on port 6443, VIP port 443 → worker nodes on port 30081, VIP port 80 → worker nodes on port 30080, and VIP port 30088 → worker nodes on port 30088.
 
 So, you should first decide whether you already have any technology in place to forward these requests, and then decide whether you need to use HAProxy/Keepalived or not.
 
-#### Do on 192.168.154.137
+#### Do on 192.168.10.100
 
 ```bash
 # 1) Install + enable HAProxy
@@ -585,31 +585,31 @@ frontend fe_30088
 backend be_k8s_api
     balance roundrobin
     option  tcp-check
-    server master1 192.168.154.131:6443 check
-    server master2 192.168.154.132:6443 check
-    server master3 192.168.154.134:6443 check
+    server master1.soltani.co 192.168.10.1:6443 check
+    server master2.soltani.co 192.168.10.2:6443 check
+    server master3.soltani.co 192.168.10.3:6443 check
 
 # Workers HTTPS NodePort (usually ingress HTTPS)
 backend be_https_nodeport
     balance roundrobin
     option  tcp-check
-    server worker1 192.168.154.135:30081 check
-    server worker2 192.168.154.136:30081 check
+    server worker1.soltani.co 192.168.10.4:30081 check
+    server worker2.soltani.co 192.168.10.5:30081 check
 
 # Workers HTTP NodePort (usually ingress HTTP)
 backend be_http_nodeport
     balance roundrobin
     option  tcp-check
-    server worker1 192.168.154.135:30080 check
-    server worker2 192.168.154.136:30080 check
+    server worker1.soltani.co 192.168.10.4:30080 check
+    server worker2.soltani.co 192.168.10.5:30080 check
 
 # Workers on NodePort 30088
 backend be_30088_nodeport
     balance roundrobin
     option  tcp-check
     default-server inter 5s fall 3 rise 2
-    server worker1 192.168.154.135:30088 check
-    server worker2 192.168.154.136:30088 check
+    server worker1.soltani.co 192.168.10.4:30088 check
+    server worker2.soltani.co 192.168.10.5:30088 check
 EOF
 
 # 4) Restart and check status
@@ -620,10 +620,10 @@ sudo systemctl status haproxy --no-pager
 #    Ensure these are present in inventory/mycluster/group_vars/all/all.yml
 sudo sed -i '/^apiserver_loadbalancer_domain_name:/d' inventory/mycluster/group_vars/all/all.yml
 sudo sed -i '/^apiserver_loadbalancer_port:/d' inventory/mycluster/group_vars/all/all.yml
-printf "apiserver_loadbalancer_domain_name: 192.168.154.137\napiserver_loadbalancer_port: 6443\n" | sudo tee -a inventory/mycluster/group_vars/all/all.yml
+printf "apiserver_loadbalancer_domain_name: 192.168.10.100\napiserver_loadbalancer_port: 6443\n" | sudo tee -a inventory/mycluster/group_vars/all/all.yml
 
-# (Optional) fix comment in SANs: mark 192.168.154.137 as LB/HAProxy
-# and ensure 192.168.154.137 remains listed under supplementary_addresses_in_ssl_keys at the inventory/mycluster/group_vars/k8s_cluster/k8s-cluster.yml
+# (Optional) fix comment in SANs: mark 192.168.10.100 as LB/HAProxy
+# and ensure 192.168.10.100 remains listed under supplementary_addresses_in_ssl_keys at the inventory/mycluster/group_vars/k8s_cluster/k8s-cluster.yml
 ```
 
 ##### Token-by-token breakdown + safety notes
@@ -652,10 +652,10 @@ printf "apiserver_loadbalancer_domain_name: 192.168.154.137\napiserver_loadbalan
 * Backends (`server <name> <ip:port> check`)
 
   * `check` enables TCP health checks (uses `option tcp-check`); unhealthy targets are removed from rotation.
-  * **Safety:** ensure those controller/worker IPs are reachable from 192.168.154.137.
+  * **Safety:** ensure those controller/worker IPs are reachable from 192.168.10.100.
 * `sed -i` lines + `printf … | tee -a`
 
-  * Ensures `apiserver_loadbalancer_domain_name: 192.168.154.137` and `apiserver_loadbalancer_port: 6443` are present; kubeconfig will point to the LB. Just clarify its comment to “LB/HAProxy IP.” 
+  * Ensures `apiserver_loadbalancer_domain_name: 192.168.10.100` and `apiserver_loadbalancer_port: 6443` are present; kubeconfig will point to the LB. Just clarify its comment to “LB/HAProxy IP.” 
 
 **Common pitfalls**
 
@@ -699,28 +699,28 @@ cd /opt/kubespray/inventory
 cp -r sample ./mycluster
 cd mycluster
 cat <<EOF | sudo tee inventory.ini
-master1 ansible_host=192.168.154.131 ansible_port=22 ip=192.168.154.131 etcd_member_name=etcd1
-master2 ansible_host=192.168.154.132 ansible_port=22 ip=192.168.154.132 etcd_member_name=etcd2
-master3 ansible_host=192.168.154.134 ansible_port=22 ip=192.168.154.134 etcd_member_name=etcd3
-worker1 ansible_host=192.168.154.135 ansible_port=22 ip=192.168.154.135
-worker2 ansible_host=192.168.154.136 ansible_port=22 ip=192.168.154.136
+master1.soltani.co ansible_host=172.40.10.1 ansible_port=22 ip=192.168.10.1 etcd_member_name=etcd1
+master2.soltani.co ansible_host=172.40.10.2 ansible_port=22 ip=192.168.10.2 etcd_member_name=etcd2
+master3.soltani.co ansible_host=172.40.10.3 ansible_port=22 ip=192.168.10.3 etcd_member_name=etcd3
+worker1.soltani.co ansible_host=172.40.10.4 ansible_port=22 ip=192.168.10.4
+worker2.soltani.co ansible_host=172.40.10.5 ansible_port=22 ip=192.168.10.5
 [kube_control_plane]
-master1
-master2
-master3
+master1.soltani.co
+master2.soltani.co
+master3.soltani.co
 
 [etcd:children]
 kube_control_plane
 
 [kube_node]
-worker1
-worker2
+worker1.soltani.co
+worker2.soltani.co
 
 EOF
 ```
 #### Notes
 
-- `master1`, `master2`, … are **hostnames** (Ansible inventory names).
+- `master1.soltani.co`, `master2.soltani.co`, … are **hostnames** (Ansible inventory names).
 - `ansible_host` = the **SSH target address** Ansible uses to connect.
 - `ansible_port=22` = SSH port (22 is default; you can omit it if you use 22).
 - `ip` = the node’s **internal/node IP** that Kubernetes should use (node IP / advertise IP). This can equal ansible_host, but often differs in multi-NIC setups.
@@ -895,12 +895,12 @@ kubectl run -n default -it --rm t1 --image=busybox:1.36 --restart=Never -- \
 kubectl -n kube-system get ds kube-proxy || echo "kube-proxy disabled (OK for strict replacement)"
 
 # 8) API through LB (expect TLS handshake / 403 when unauthenticated)
-curl -vk https://192.168.154.137:6443/ -m 5 || true
+curl -vk https://192.168.10.100:6443/ -m 5 || true
 
 # 9) NodePorts via LB
-nc -vz 192.168.154.137 80
-nc -vz 192.168.154.137 443
-nc -vz 192.168.154.137 30088
+nc -vz 192.168.10.100 80
+nc -vz 192.168.10.100 443
+nc -vz 192.168.10.100 30088
 
 # 10) kubeconfig should point at the LB now
 kubectl cluster-info
