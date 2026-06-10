@@ -4,9 +4,9 @@
 ## ========================
 ## CONFIGURATION
 ## ========================
-NEXUS_URL="http://192.168.154.133:8081/repository/local"   # no trailing slash
-NEXUS_USER="admin"
-NEXUS_PASS="admin"
+NEXUS_URL="https://nexus.soltani.co/repository/Rocky-10.1"   # no trailing slash
+NEXUS_USER="Rocky-10.1_repository_user"
+NEXUS_PASS="Rocky-10.1_repository_password"
 
 # Each entry: "local_path nexus_repo_name"
 REPOS=(
