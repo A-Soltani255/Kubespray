@@ -991,39 +991,46 @@ Expected pods (steady state): apiserver/scheduler/controller-manager on masters;
 **`/etc/containerd/certs.d/docker.io/hosts.toml`**
 ```toml
 server = "https://docker.io"
-[host."http://192.168.154.133:5000"]
+[host."https://nexus.soltani.co:5000"]
   capabilities = ["pull","resolve"]
   skip_verify = false
   override_path = false
-```
-
-**`/etc/containerd/certs.d/ghcr.io/hosts.toml`**
-```toml
-server = "https://ghcr.io"
-[host."http://192.168.154.133:5003"]
-  capabilities = ["pull","resolve"]
-  skip_verify = false
-  override_path = false
-```
-
-**`/etc/containerd/certs.d/quay.io/hosts.toml`**
-```toml
-server = "https://quay.io"
-[host."http://192.168.154.133:5002"]
-  capabilities = ["pull","resolve"]
-  skip_verify = false
-  override_path = false
+  [host."https://nexus.soltani.co:5000".header]
+    Authorization: ["Basic a3ViZTpBU0R3c3gqJVFXRTEyMw=="]
 ```
 
 **`/etc/containerd/certs.d/registry.k8s.io/hosts.toml`**
 ```toml
 server = "https://registry.k8s.io"
-[host."http://192.168.154.133:5001"]
+[host."https://nexus.soltani.co:5001"]
   capabilities = ["pull","resolve"]
   skip_verify = false
   override_path = false
+  [host."https://nexus.soltani.co:5001".header]
+    Authorization: ["Basic a3ViZTpBU0R3c3gqJVFXRTEyMw=="]
 ```
 
+**`/etc/containerd/certs.d/quay.io/hosts.toml`**
+```toml
+server = "https://quay.io"
+[host."https://nexus.soltani.co:5002"]
+  capabilities = ["pull","resolve"]
+  skip_verify = false
+  override_path = false
+  [host."https://nexus.soltani.co:5002".header]
+    Authorization: ["Basic a3ViZTpBU0R3c3gqJVFXRTEyMw=="]
+```
+
+**`/etc/containerd/certs.d/ghcr.io/hosts.toml`**
+```toml
+server = "https://ghcr.io"
+[host."https://nexus.soltani.co:5003"]
+  capabilities = ["pull","resolve"]
+  skip_verify = false
+  override_path = false
+  [host."https://nexus.soltani.co:5003".header]
+    Authorization: ["Basic a3ViZTpBU0R3c3gqJVFXRTEyMw=="]
+```
 ---
 
 # _The End_
