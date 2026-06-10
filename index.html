@@ -1,303 +1,766 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Air-gapped, Offline & Hardened Kubernetes Cluster with Kubespray (Runbook)</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="A documentation-first runbook for building air-gapped, offline and hardened Kubernetes clusters with Kubespray, Nexus, containerd and Cilium." />
+  <meta name="author" content="A. Soltani" />
+  <meta name="robots" content="index, follow" />
 
-  <meta name="description" content="Step-by-step runbook for building an air-gapped, offline, hardened, highly available Kubernetes cluster using Kubespray, private container registries and internal OS repositories in restricted environments.">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="index,follow">
+  <meta property="og:title" content="Air-Gapped, Offline and Hardened Kubernetes with Kubespray" />
+  <meta property="og:description" content="End-to-end runbook for deploying Kubernetes with Kubespray in restricted and air-gapped environments." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://a-soltani255.github.io/Kubespray/" />
 
-  <!-- Canonical URL helps avoid duplicate-content confusion -->
-  <link rel="canonical" href="https://a-soltani255.github.io/Kubespray/">
-
-  <!-- Open Graph (for social / rich link previews) -->
-  <meta property="og:title" content="Air-gapped, Offline & Hardened Kubernetes Cluster with Kubespray">
-  <meta property="og:description" content="Runbook and supporting material for building an air-gapped, offline, hardened, highly available Kubernetes cluster using Kubespray, private registries and internal OS mirrors.">
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://a-soltani255.github.io/Kubespray/">
-  <!-- If you create an image at this path, keep this line; otherwise you can delete it -->
-  <meta property="og:image" content="https://a-soltani255.github.io/Kubespray/og-image.png">
-
-  <!-- Twitter Card -->
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Air-gapped, Offline & Hardened Kubernetes Cluster with Kubespray">
-  <meta name="twitter:description" content="Step-by-step runbook for building an air-gapped, offline, hardened, highly available Kubernetes cluster using Kubespray.">
-
-  <!-- Optional: Google Search Console verification
-  <meta name="google-site-verification" content="PASTE_YOUR_TOKEN_HERE" />
-  -->
-
-  <!-- Structured data (helps search engines understand the page) -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "TechArticle",
-    "headline": "Building Air-gapped, Offline & Hardened Kubernetes Clusters with Kubespray",
-    "description": "Step-by-step runbook for building an air-gapped, offline, hardened, highly available Kubernetes cluster using Kubespray, private container registries and internal OS repositories.",
-    "author": {
-      "@type": "Person",
-      "name": "Ali Soltaninasab"
-    },
-    "url": "https://a-soltani255.github.io/Kubespray/",
-    "mainEntityOfPage": "https://a-soltani255.github.io/Kubespray/",
-    "about": [
-      "Kubernetes",
-      "Kubespray",
-      "Air-gapped Kubernetes cluster",
-      "Offline Kubernetes cluster",
-      "DevOps",
-      "SRE"
-    ]
-  }
-  </script>
+  <title>Air-Gapped, Offline and Hardened Kubernetes with Kubespray</title>
 
   <style>
     :root {
-      color-scheme: dark light;
+      color-scheme: dark;
+      --bg: #07111f;
+      --bg-soft: #0d1b2e;
+      --bg-card: #10233a;
+      --border: rgba(148, 163, 184, 0.25);
+      --text: #e5edf7;
+      --muted: #a9b8cc;
+      --accent: #38bdf8;
+      --accent-strong: #22c55e;
+      --warning: #facc15;
+      --shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+      --radius: 20px;
+      --max-width: 1180px;
     }
+
     * {
       box-sizing: border-box;
     }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
     body {
       margin: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       line-height: 1.6;
-      background: #050816;
-      color: #e5e7eb;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(56, 189, 248, 0.20), transparent 32rem),
+        radial-gradient(circle at top right, rgba(34, 197, 94, 0.14), transparent 28rem),
+        var(--bg);
     }
+
     a {
-      color: #38bdf8;
+      color: var(--accent);
       text-decoration: none;
     }
-    a:hover {
+
+    a:hover,
+    a:focus {
       text-decoration: underline;
     }
-    .page {
-      max-width: 900px;
+
+    .skip-link {
+      position: absolute;
+      top: -48px;
+      left: 16px;
+      padding: 10px 14px;
+      color: #04111f;
+      background: var(--accent);
+      border-radius: 999px;
+      z-index: 100;
+    }
+
+    .skip-link:focus {
+      top: 16px;
+    }
+
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      border-bottom: 1px solid var(--border);
+      background: rgba(7, 17, 31, 0.84);
+      backdrop-filter: blur(18px);
+    }
+
+    .nav {
+      max-width: var(--max-width);
       margin: 0 auto;
-      padding: 2.5rem 1.5rem 3rem;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
     }
-    header h1 {
-      font-size: 2.1rem;
-      margin-bottom: 0.25rem;
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text);
     }
-    header p {
-      margin-top: 0.25rem;
-      color: #9ca3af;
+
+    .brand-mark {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      color: #04111f;
+      background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+      box-shadow: 0 10px 30px rgba(56, 189, 248, 0.28);
     }
-    .badge {
+
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 14px;
+      font-size: 0.94rem;
+    }
+
+    .nav-links a {
+      color: var(--muted);
+    }
+
+    .nav-links a:hover,
+    .nav-links a:focus {
+      color: var(--text);
+    }
+
+    main {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 48px 24px 72px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.7fr);
+      gap: 28px;
+      align-items: stretch;
+      padding: 42px;
+      border: 1px solid var(--border);
+      border-radius: 32px;
+      background: linear-gradient(145deg, rgba(16, 35, 58, 0.95), rgba(13, 27, 46, 0.82));
+      box-shadow: var(--shadow);
+    }
+
+    .eyebrow {
       display: inline-flex;
       align-items: center;
-      gap: 0.35rem;
-      font-size: 0.78rem;
-      padding: 0.2rem 0.55rem;
+      gap: 8px;
+      width: fit-content;
+      margin: 0 0 18px;
+      padding: 7px 12px;
+      border: 1px solid rgba(56, 189, 248, 0.35);
       border-radius: 999px;
-      border: 1px solid #374151;
-      color: #9ca3af;
-      margin-bottom: 1rem;
+      color: #c7f9ff;
+      background: rgba(56, 189, 248, 0.09);
+      font-size: 0.86rem;
+      font-weight: 700;
     }
-    .badge-dot {
-      width: 0.5rem;
-      height: 0.5rem;
-      border-radius: 999px;
-      background: #22c55e;
+
+    h1,
+    h2,
+    h3 {
+      line-height: 1.15;
+      margin: 0;
+      letter-spacing: -0.035em;
     }
+
+    h1 {
+      max-width: 840px;
+      font-size: clamp(2.55rem, 7vw, 5.7rem);
+    }
+
     h2 {
-      margin-top: 2rem;
-      margin-bottom: 0.6rem;
-      font-size: 1.3rem;
+      font-size: clamp(2rem, 4vw, 3.25rem);
     }
-    ul {
-      padding-left: 1.1rem;
+
+    h3 {
+      font-size: 1.25rem;
     }
-    li {
-      margin-bottom: 0.2rem;
-    }
-    .card {
-      border-radius: 0.75rem;
-      border: 1px solid #1f2933;
-      background: radial-gradient(circle at top, #111827 0, #020617 55%);
-      padding: 1.25rem 1.4rem;
-      margin-top: 1.2rem;
-    }
-    .card-title {
-      font-weight: 600;
-      margin-bottom: 0.4rem;
-    }
-    .primary-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      margin-top: 0.8rem;
-      padding: 0.5rem 0.9rem;
-      border-radius: 999px;
-      border: 1px solid #38bdf8;
-      background: rgba(56, 189, 248, 0.1);
-      font-size: 0.95rem;
-    }
-    .primary-link span {
+
+    .hero p {
+      max-width: 760px;
+      margin: 22px 0 0;
+      color: var(--muted);
       font-size: 1.1rem;
     }
-    footer {
-      margin-top: 3rem;
-      font-size: 0.8rem;
-      color: #6b7280;
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 28px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 46px;
+      padding: 0 18px;
+      border: 1px solid transparent;
+      border-radius: 999px;
+      font-weight: 800;
+      text-decoration: none;
+    }
+
+    .button:hover,
+    .button:focus {
+      text-decoration: none;
+      transform: translateY(-1px);
+    }
+
+    .button-primary {
+      color: #04111f;
+      background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+    }
+
+    .button-secondary {
+      color: var(--text);
+      border-color: var(--border);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .hero-panel {
+      display: grid;
+      gap: 14px;
+    }
+
+    .stat-card,
+    .card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.045);
+    }
+
+    .stat-card {
+      padding: 20px;
+    }
+
+    .stat-card strong {
+      display: block;
+      font-size: 1.8rem;
+      line-height: 1;
+      color: #ffffff;
+    }
+
+    .stat-card span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.94rem;
+    }
+
+    .section {
+      margin-top: 72px;
+    }
+
+    .section-header {
+      max-width: 820px;
+      margin-bottom: 26px;
+    }
+
+    .section-header p {
+      margin: 14px 0 0;
+      color: var(--muted);
+      font-size: 1.04rem;
+    }
+
+    .grid {
+      display: grid;
+      gap: 18px;
+    }
+
+    .grid-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .grid-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .card {
+      padding: 24px;
+    }
+
+    .card p,
+    .card li {
+      color: var(--muted);
+    }
+
+    .card p:last-child,
+    .card ul:last-child,
+    .card ol:last-child {
+      margin-bottom: 0;
+    }
+
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 22px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .tag-list li {
+      padding: 8px 11px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: #d9e8f7;
+      background: rgba(255, 255, 255, 0.04);
+      font-size: 0.9rem;
+    }
+
+    .doc-list {
+      display: grid;
+      gap: 14px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .doc-list a {
+      display: grid;
+      gap: 4px;
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.035);
+      text-decoration: none;
+    }
+
+    .doc-list a strong {
+      color: var(--text);
+    }
+
+    .doc-list a span {
+      color: var(--muted);
+      font-size: 0.94rem;
+    }
+
+    .doc-list a:hover,
+    .doc-list a:focus {
+      border-color: rgba(56, 189, 248, 0.55);
+      background: rgba(56, 189, 248, 0.065);
+    }
+
+    .flow {
+      counter-reset: step;
+      display: grid;
+      gap: 14px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .flow li {
+      position: relative;
+      padding: 20px 20px 20px 68px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.035);
+      color: var(--muted);
+    }
+
+    .flow li::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      left: 20px;
+      top: 20px;
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      color: #04111f;
+      background: var(--accent);
+      font-weight: 900;
+    }
+
+    .flow strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--text);
+    }
+
+    .repo-tree {
+      overflow-x: auto;
+      padding: 22px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: #dbeafe;
+      background: #06101d;
+      font-size: 0.92rem;
+      line-height: 1.55;
+    }
+
+    code,
+    pre {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+
+    .warning {
+      border-color: rgba(250, 204, 21, 0.38);
+      background: rgba(250, 204, 21, 0.08);
+    }
+
+    .warning strong {
+      color: #fff7c2;
+    }
+
+    .footer {
+      border-top: 1px solid var(--border);
+      padding: 30px 24px 44px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .footer a {
+      font-weight: 700;
+    }
+
+    @media (max-width: 900px) {
+      .hero,
+      .grid-2,
+      .grid-3 {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        padding: 28px;
+      }
+
+      .nav {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .nav-links {
+        justify-content: flex-start;
+      }
+    }
+
+    @media (max-width: 560px) {
+      main {
+        padding: 28px 16px 56px;
+      }
+
+      .hero {
+        border-radius: 24px;
+        padding: 24px;
+      }
+
+      .button {
+        width: 100%;
+      }
+
+      .flow li {
+        padding-left: 20px;
+      }
+
+      .flow li::before {
+        position: static;
+        margin-bottom: 12px;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="page">
-    <header>
-      <div class="badge">
-        <span class="badge-dot"></span>
-        <span>DevOps / Kubernetes Platform Engineering</span>
-      </div>
-      <h1>Building Air-gapped, Offline &amp; Hardened Kubernetes Clusters with Kubespray</h1>
-      <p>
-        A documentation-first project that walks through building an air-gapped, hardened,
-        highly available Kubernetes cluster using Kubespray, with real-world constraints and
-        operational details.
-      </p>
-    </header>
+  <a class="skip-link" href="#main-content">Skip to content</a>
 
-    <section>
-      <h2>What this project is about</h2>
-      <p>
-        Many Kubernetes examples assume full Internet access and a simple single-node cluster.
-        This project focuses on <strong>clusters with little or no Internet connectivity</strong>
-        and shows how to run <strong>air-gapped and offline Kubernetes clusters</strong>
-        with Kubespray.
-      </p>
-      <ul>
-        <li>Fully <strong>air-gapped clusters</strong> with no direct Internet access from Kubernetes nodes</li>
-        <li><strong>Offline / disconnected clusters</strong> where you install and operate Kubernetes using internal package repositories and a private container registry</li>
-        <li>Multi-node clusters with a highly available control plane</li>
-        <li>Opinionated hardening and post-install validation</li>
-        <li>A reusable runbook that other engineers can follow end-to-end</li>
-      </ul>
-    </section>
-
-    <section>
-      <h2>Air-gapped vs. Offline – what do we mean?</h2>
-
-      <p>In this project I use two related terms:</p>
-
-      <h3>Offline / disconnected Kubernetes cluster</h3>
-      <p>
-        A cluster that is installed and operated without relying on direct Internet access.
-        All OS packages and container images are served from internal mirrors and registries.
-      </p>
-
-      <h3>Air-gapped Kubernetes cluster</h3>
-      <p>
-        A stricter version of the same idea, where the cluster nodes have
-        <strong>no routable path to the public Internet</strong> at all.
-        All updates, images and packages must be brought in via bastion hosts, USB,
-        or other controlled paths.
-      </p>
-
-      <p>
-        The runbook and configs in this repo work for <strong>both</strong>:
-        you can use them as-is for strict air-gapped environments,
-        or adapt them for “just offline” clusters that occasionally sync from an upstream mirror.
-      </p>
-    </section>
-
-    <section class="card">
-      <div class="card-title">Explore the full runbook &amp; configuration</div>
-      <p>The GitHub repository contains:</p>
-      <ul>
-        <li>
-          <strong>Main runbook:</strong>
-          <code>Installing-Airgapped-Hardened-Kubernetes-Cluster-Using-Kubespray.md</code>
-        </li>
-        <li>
-          <strong>Scripts, appendices and configurations:</strong> example inventories,
-          group vars, helper scripts and troubleshooting notes
-        </li>
-        <li>
-          Architecture and operational guidance for bringing up the cluster in an
-          air-gapped or offline environment
-        </li>
-      </ul>
-      <a class="primary-link" href="https://github.com/A-Soltani255/Kubespray" target="_blank" rel="noopener">
-        <span>➜</span>
-        <span>Open the GitHub repository</span>
+  <header class="site-header">
+    <nav class="nav" aria-label="Primary navigation">
+      <a class="brand" href="#top" aria-label="Kubespray air-gapped documentation home">
+        <span class="brand-mark" aria-hidden="true">K8s</span>
+        <span>Kubespray Air-Gapped Runbook</span>
       </a>
+      <div class="nav-links">
+        <a href="#about">About</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#docs">Docs</a>
+        <a href="#flow">Flow</a>
+        <a href="#skills">Skills</a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="main-content">
+    <section id="top" class="hero" aria-labelledby="page-title">
+      <div>
+        <p class="eyebrow">DevOps / Kubernetes Platform Engineering</p>
+        <h1 id="page-title">Air-Gapped, Offline and Hardened Kubernetes with Kubespray</h1>
+        <p>
+          A documentation-first project for building a production-style Kubernetes cluster in a restricted or fully air-gapped environment using Kubespray, Rocky Linux, Nexus Repository Manager, containerd and Cilium.
+        </p>
+        <div class="hero-actions" aria-label="Primary actions">
+          <a class="button button-primary" href="./Installing-Airgapped-Hardened-Kubernetes-Cluster-Using-Kubespray.md">Open the main runbook</a>
+          <a class="button button-secondary" href="https://github.com/A-Soltani255/Kubespray">View on GitHub</a>
+        </div>
+      </div>
+
+      <aside class="hero-panel" aria-label="Project highlights">
+        <div class="stat-card">
+          <strong>Kubespray</strong>
+          <span>Repeatable Kubernetes provisioning with Ansible inventory and group variables.</span>
+        </div>
+        <div class="stat-card">
+          <strong>Nexus</strong>
+          <span>Internal RPM, raw artifact and Docker repositories for offline deployments.</span>
+        </div>
+        <div class="stat-card">
+          <strong>Cilium</strong>
+          <span>CNI-focused networking with clear firewall and data-plane considerations.</span>
+        </div>
+      </aside>
     </section>
 
-        <section>
-      <h2>Deep-dive GitHub issues & extended runbooks</h2>
-      <p>
-        Some of the more advanced parts of this project are documented as
-        GitHub issues. These issues act as extended runbooks you can follow
-        step by step.
-      </p>
-      <ul>
+    <section id="about" class="section" aria-labelledby="about-title">
+      <div class="section-header">
+        <h2 id="about-title">What this project solves</h2>
+        <p>
+          Many Kubernetes examples assume direct Internet access, public registries and a simple cluster. This project documents the real-world path for deploying Kubernetes where nodes must use internal repositories and controlled artifact flows only.
+        </p>
+      </div>
+
+      <div class="grid grid-3">
+        <article class="card">
+          <h3>Offline-first deployment</h3>
+          <p>Prepare RPM packages, Python wheels, Kubernetes binaries and container images before entering the restricted network.</p>
+        </article>
+        <article class="card">
+          <h3>Internal artifact supply chain</h3>
+          <p>Use Nexus Repository Manager as the internal source for OS packages, raw files and container images.</p>
+        </article>
+        <article class="card">
+          <h3>Operational runbooks</h3>
+          <p>Document validation, troubleshooting, firewall rules, day-2 changes and CI/CD-based re-apply workflows.</p>
+        </article>
+      </div>
+
+      <ul class="tag-list" aria-label="Technology stack">
+        <li>Rocky Linux</li>
+        <li>Kubespray</li>
+        <li>Kubernetes</li>
+        <li>containerd</li>
+        <li>Cilium</li>
+        <li>Nexus Repository Manager</li>
+        <li>HAProxy VIP</li>
+        <li>Firewalld</li>
+        <li>GitLab CI/CD</li>
+      </ul>
+    </section>
+
+    <section id="architecture" class="section" aria-labelledby="architecture-title">
+      <div class="section-header">
+        <h2 id="architecture-title">Reference architecture</h2>
+        <p>
+          The runbook uses a multi-node Kubernetes design with an HA control plane, private repositories and separated management/data-plane addressing.
+        </p>
+      </div>
+
+      <div class="grid grid-2">
+        <article class="card">
+          <h3>Core design</h3>
+          <ul>
+            <li>Three control-plane nodes.</li>
+            <li>Worker nodes for application workloads.</li>
+            <li>A Kubespray automation host with SSH access to Kubernetes nodes.</li>
+            <li>Nexus as the internal RPM, raw artifact and container image source.</li>
+            <li>API access through a load-balanced VIP on port <code>6443</code>.</li>
+          </ul>
+        </article>
+
+        <article class="card warning">
+          <h3>Production safety notes</h3>
+          <ul>
+            <li>Replace all sample IP addresses, hostnames and repository names.</li>
+            <li>Never commit real passwords, tokens, private keys or certificates.</li>
+            <li>Validate checksums before promoting offline artifacts.</li>
+            <li>Test the full workflow in a lab before using it for a real environment.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section id="docs" class="section" aria-labelledby="docs-title">
+      <div class="section-header">
+        <h2 id="docs-title">Documentation map</h2>
+        <p>Start with the main runbook, then use the supporting documents for Nexus, firewalld, Kubespray variables and helper scripts.</p>
+      </div>
+
+      <div class="grid grid-2">
+        <ul class="doc-list">
+          <li>
+            <a href="./Installing-Airgapped-Hardened-Kubernetes-Cluster-Using-Kubespray.md">
+              <strong>Main Kubespray build guide</strong>
+              <span>Complete installation procedure from artifact preparation to final verification.</span>
+            </a>
+          </li>
+          <li>
+            <a href="./Scripts,%20appendices%20and%20Configurations/Nexus%20Preparation/Nexus%20Repository%20Manager%20for%20Air-Gapped%20Kubespray%20Deployments.md">
+              <strong>Nexus preparation</strong>
+              <span>Design internal repositories for RPM packages, raw files and Docker images.</span>
+            </a>
+          </li>
+          <li>
+            <a href="./Scripts,%20appendices%20and%20Configurations/Firewalld%20%20Preparation/Firewalld%20Configuration.md">
+              <strong>Firewalld configuration</strong>
+              <span>Zones, services, ipsets, Cilium traffic, verification and rollback notes.</span>
+            </a>
+          </li>
+          <li>
+            <a href="./Scripts,%20appendices%20and%20Configurations/Configurations/offline-yml.md">
+              <strong>Offline variables</strong>
+              <span>Kubespray offline URLs, artifact paths and repository endpoints.</span>
+            </a>
+          </li>
+        </ul>
+
+        <ul class="doc-list">
+          <li>
+            <a href="./Scripts,%20appendices%20and%20Configurations/Configurations/containerd-yml.md">
+              <strong>containerd variables</strong>
+              <span>Registry mirror and runtime-related Kubespray configuration.</span>
+            </a>
+          </li>
+          <li>
+            <a href="./Scripts,%20appendices%20and%20Configurations/Configurations/k8s-cluster-yml.md">
+              <strong>Cluster variables</strong>
+              <span>Core Kubernetes cluster settings used by Kubespray.</span>
+            </a>
+          </li>
+          <li>
+            <a href="./Scripts,%20appendices%20and%20Configurations/Configurations/hardening-yaml.md">
+              <strong>Hardening variables</strong>
+              <span>Security controls and admission plugin-related configuration.</span>
+            </a>
+          </li>
+          <li>
+            <a href="./Scripts,%20appendices%20and%20Configurations/Configurations/k8s-net-custom-cni-yml.md">
+              <strong>Custom CNI variables</strong>
+              <span>Custom CNI values and Helm chart repository settings.</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="flow" class="section" aria-labelledby="flow-title">
+      <div class="section-header">
+        <h2 id="flow-title">Deployment flow</h2>
+        <p>The repository is organized around a simple sequence: prepare artifacts, move them offline, seed Nexus, configure Kubespray, deploy, then verify.</p>
+      </div>
+
+      <ol class="flow">
         <li>
-          <a href="https://github.com/A-Soltani255/Kubespray/issues/2"
-             target="_blank" rel="noopener">
-            Issue #2 – Removing AlwaysPullImages + Enforcing IfNotPresent
-          </a>
-          – a detailed runbook for removing the
-          <code>AlwaysPullImages</code> admission plugin and enforcing
-          <code>k8s_image_pull_policy: IfNotPresent</code> with:
-          pre-checks, Kubespray vars cleanup, re-applying
-          <code>cluster.yml</code>, fixing kubeadm config / apiserver
-          manifests on each control-plane node, and final verification.
+          <strong>Prepare online artifacts</strong>
+          Sync RPM repositories, download Python wheels, generate offline lists, pull images and save required binaries.
         </li>
         <li>
-          <a href="https://github.com/A-Soltani255/Kubespray/issues/3"
-             target="_blank" rel="noopener">
-            Issue #3 – GitLab CI/CD for Kubespray-Based Kubernetes Cluster
-          </a>
-          – a full design and implementation guide for wiring this
-          Kubespray project into GitLab CI/CD, with a shell runner on the
-          Kubespray (Ansible) host and jobs like <code>kubespray-full</code>,
-          <code>kubespray-cilium</code> and <code>kubespray-custom-cni</code>
-          that call <code>ci/run-kubespray.sh</code> and pass Kubespray tags
-          to re-apply Kubespray safely to the existing cluster.
+          <strong>Move artifacts into the offline network</strong>
+          Transfer image archives, RPMs, wheels and binaries through a controlled path and keep a versioned copy.
         </li>
-      </ul>
-      <p>
-        These deep-dive issues complement the main runbook by covering
-        day-2 operations such as reconfiguring admission plugins and
-        automating Kubespray re-applies through GitLab pipelines.
-      </p>
+        <li>
+          <strong>Seed Nexus</strong>
+          Create YUM, raw and Docker hosted repositories, then upload or push the offline artifact set.
+        </li>
+        <li>
+          <strong>Prepare nodes</strong>
+          Configure hostnames, DNS or hosts files, NTP, swap, SSH access and firewall behavior.
+        </li>
+        <li>
+          <strong>Configure Kubespray</strong>
+          Update inventory, <code>offline.yml</code>, <code>containerd.yml</code>, cluster variables, CNI values and hardening settings.
+        </li>
+        <li>
+          <strong>Deploy and verify</strong>
+          Run Kubespray, validate node readiness, API health, Cilium, CoreDNS and internal image pulls.
+        </li>
+      </ol>
     </section>
 
+    <section class="section" aria-labelledby="repo-title">
+      <div class="section-header">
+        <h2 id="repo-title">Repository layout</h2>
+        <p>The repository keeps the main guide at the root and places supporting runbooks, configuration examples and scripts under one supporting directory.</p>
+      </div>
 
-    <section>
-      <h2>Skills demonstrated</h2>
-      <ul>
-        <li>Kubernetes cluster provisioning with Kubespray</li>
-        <li>Designing and operating <strong>air-gapped and offline / disconnected clusters</strong></li>
-        <li>High-availability control plane design</li>
-        <li>Private container registry &amp; internal OS repositories</li>
-        <li>Security hardening and operational runbooks</li>
-      </ul>
+      <pre class="repo-tree" aria-label="Repository tree"><code>.
+├── README.md
+├── Installing-Airgapped-Hardened-Kubernetes-Cluster-Using-Kubespray.md
+├── index.html
+└── Scripts, appendices and Configurations/
+    ├── Configurations/
+    │   ├── containerd-yml.md
+    │   ├── hardening-yaml.md
+    │   ├── k8s-cluster-yml.md
+    │   ├── k8s-net-custom-cni-yml.md
+    │   └── offline-yml.md
+    ├── Firewalld  Preparation/
+    │   └── Firewalld Configuration.md
+    ├── Nexus Preparation/
+    │   └── Nexus Repository Manager for Air-Gapped Kubespray Deployments.md
+    └── Scripts/
+        ├── files-push-repo.sh
+        ├── files.sh
+        ├── images-load-and-retag.sh
+        ├── images-verify.sh
+        └── images.sh</code></pre>
     </section>
 
-    <section>
-      <h2>Getting started</h2>
-      <p>
-        To dive into the details, start with the main runbook in the GitHub repository and
-        adapt the inventories, group vars and scripts to your own environment
-        (IP addressing, OS version, storage, network policies, etc.).
-      </p>
-      <p>
-        For a high-level overview, you can also read the accompanying article on Dev.to,
-        which explains the architecture and motivation behind the project.
-      </p>
-    </section>
+    <section id="skills" class="section" aria-labelledby="skills-title">
+      <div class="section-header">
+        <h2 id="skills-title">Skills demonstrated</h2>
+        <p>This project is documentation-heavy on purpose: it shows platform engineering decisions, implementation steps, validation checks and operational trade-offs.</p>
+      </div>
 
-    <footer>
-      <p>
-        This site is published via GitHub Pages for discoverability and as a simple landing
-        page for the Kubespray air-gapped / offline Kubernetes cluster project.
-      </p>
-    </footer>
-  </div>
+      <div class="grid grid-3">
+        <article class="card">
+          <h3>Platform engineering</h3>
+          <p>Kubespray-based Kubernetes provisioning, HA control-plane design, inventory management and node preparation.</p>
+        </article>
+        <article class="card">
+          <h3>Offline supply chain</h3>
+          <p>RPM mirroring, private registries, image retagging, artifact staging and internal repository design.</p>
+        </article>
+        <article class="card">
+          <h3>Operations and hardening</h3>
+          <p>Firewall rules, admission plugin control, verification, rollback thinking, CI/CD re-apply workflows and runbook quality.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>
+      Built as a practical Kubernetes platform engineering runbook. Open the project on
+      <a href="https://github.com/A-Soltani255/Kubespray">GitHub</a>.
+    </p>
+  </footer>
+
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "TechArticle",
+      "headline": "Air-Gapped, Offline and Hardened Kubernetes with Kubespray",
+      "description": "A documentation-first runbook for building air-gapped, offline and hardened Kubernetes clusters with Kubespray, Nexus, containerd and Cilium.",
+      "url": "https://a-soltani255.github.io/Kubespray/",
+      "author": {
+        "@type": "Person",
+        "name": "A. Soltani"
+      },
+      "keywords": ["Kubernetes", "Kubespray", "air-gapped", "offline", "Nexus", "containerd", "Cilium", "DevOps"]
+    }
+  </script>
 </body>
 </html>
