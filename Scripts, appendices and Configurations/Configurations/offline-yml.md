@@ -10,7 +10,7 @@ files_repo_user: "raw_repository_username"
 files_repo_pass: "raw_repository_password"
 
 files_repo: "https://{{ files_repo_user | urlencode }}:{{ files_repo_pass | urlencode }}@{{ files_repo_host }}{{ files_repo_path }}"
-#files_repo: "https://repo.shbbl.co/repository/raw"
+
 ### If using CentOS, RedHat, AlmaLinux or Fedora
 # yum_repo: "http://myinternalyumrepo"
 ### If using Debian
