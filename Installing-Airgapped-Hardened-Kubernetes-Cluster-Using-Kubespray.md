@@ -440,23 +440,58 @@ After Nexus is installed, create the required hosted repositories before startin
      ```
 
 2) **Push container images to Docker (hosted) repositories on Nexus**  
-   - Install Docker **on Nexus** and allow HTTP for your hosted registry:
-     ```bash
-     dnf install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+The Nexus server exposes 4 private Docker registry endpoint through Nginx:
+```text
+   For Example ---> https://nexus.soltani.co:5000
+````
+Traffic flow:
 
-     # Add to /usr/lib/systemcd/system/docker.service file on ExecStart section(drop-in file):
-     #   --insecure-registry=192.168.154.133:5000 --insecure-registry=192.168.154.133:5001 --insecure-registry=192.168.154.133:5002 --insecure-registry=192.168.154.133:5003
-     
-     for h in 5000 5001 5002 5003; do docker login 192.168.154.133:$h; done
-     systemctl daemon-reload
-     systemctl restart docker
+```text
+Docker / containerd client
+        |
+        | HTTPS 5000
+        v
+Nginx on Nexus server
+        |
+        | HTTP 15000
+        v
+Nexus Docker hosted repository
+```
 
-     ```
+> Nexus Docker hosted repository connector: `HTTP 15000`, `HTTP 15001`, `HTTP 15002`, `HTTP 15003`
+
+> External client endpoint: `https://nexus.soltani.co:5000`, `https://nexus.soltani.co:5001`, `https://nexus.soltani.co:5002`, `https://nexus.soltani.co:5003`
+
+```bash
+# Install Docker on the machine that will load, retag, and push the offline images:
+dnf install -y \
+  docker-ce \
+  docker-ce-cli \
+  containerd.io \
+  docker-buildx-plugin \
+  docker-compose-plugin
+
+systemctl enable --now docker
+
+# Trust the Nexus internal CA for the Docker registry endpoint:
+for h in 5000 5001 5002 5003; do mkdir -p /etc/docker/certs.d/nexus.soltani.co:$h; done
+for h in 5000 5001 5002 5003; do cp /home/admin/nexus-ca.crt /etc/docker/certs.d/nexus.soltani.co:{$h}/ca.crt; done
+
+chmod 755 /etc/docker
+chmod 755 /etc/docker/certs.d
+for h in 5000 5001 5002 5003; do chmod 755 /etc/docker/certs.d/nexus.soltani.co:$h; done
+for h in 5000 5001 5002 5003; do chmod 644 /etc/docker/certs.d/nexus.soltani.co:$h/ca.crt; done
+
+# Log in to the private docker registries:
+systemctl daemon-reload
+systemctl restart docker 
+for h in 5000 5001 5002 5003; do docker login nexus.soltani.co:$h; done
+```
      
    - Load & retag & push:
      [./images-load-and-retag.sh](./Scripts,%20appendices%20and%20Configurations/Scripts/images-load-and-retag.sh)
      
-   This script re-tags images under `192.168.154.133:5000/kubespray/<upstream>/<image>:<tag>` and pushes them.
+   This script re-tags images under `192.168.10.1:4000/kubespray/<upstream>/<image>:<tag>` and pushes them.
 
 ---
 
@@ -514,9 +549,9 @@ for i in $FILES; do curl -v --user 'raw_repository_user:raw_repository_password'
 
 ```
 
-### 3.3) HAProxy (on the **Kubespray host** 192.168.10.100)
+### 3.3) HAProxy 192.168.10.100
 
-HAProxy provides a single, stable control-plane endpoint and L4 pass-through for app NodePorts. In this setup, HAProxy runs **on the same VM as Kubespray** (`192.168.10.100`). 
+HAProxy provides a single, stable control-plane endpoint and L4 pass-through for app NodePorts.
 
 I only used a single HAProxy here to keep this scenario closer to reality. I didn’t implement HAProxy with Keepalived when I set up this scenario multiple times, because all of that infrastructure was using a VIP, so I didn’t need to load balance requests to the master and worker nodes. Instead, I asked the network administrator to forward the requests as follows: traffic to VIP port 6443 → master nodes on port 6443, VIP port 443 → worker nodes on port 30081, VIP port 80 → worker nodes on port 30080, and VIP port 30088 → worker nodes on port 30088.
 
