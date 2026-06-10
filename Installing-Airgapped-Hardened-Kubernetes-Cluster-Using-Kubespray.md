@@ -350,55 +350,192 @@ After Nexus is installed, create the required hosted repositories before startin
      [./files-push-repo.sh](./Scripts,%20appendices%20and%20Configurations/Scripts/files-push-repo.sh)
 
    - Distribute a `local.repo` to **all offline hosts** under `/etc/yum.repos.d/` pointing to the Nexus YUM baseurl(s):  
-     ```ini
-      [docker-from-nexus]
-      name=Docker CE (from Nexus)
-      baseurl=http://192.168.154.133:8081/repository/local/Docker-Ce-Stable
-      enabled=1
-      gpgcheck=0
-      repo_gpgcheck=0
-      module_hotfixes=1
-      
-      [appstream]
-      name=appstream (from Nexus)
-      baseurl=http://192.168.154.133:8081/repository/local/AppStream/
-      enabled=1
-      gpgcheck=0
-      repo_gpgcheck=0
-      module_hotfixes=1
-      
-      [baseos]
-      name=baseos (from Nexus)
-      baseurl=http://192.168.154.133:8081/repository/local/BaseOS/
-      enabled=1
-      gpgcheck=0
-      repo_gpgcheck=0
-      module_hotfixes=1
-      
-      [epel]
-      name=epel (from Nexus)
-      baseurl=http://192.168.154.133:8081/repository/local/EPEL/
-      enabled=1
-      gpgcheck=0
-      repo_gpgcheck=0
-      module_hotfixes=1
-      
-      [extras]
-      name=extras (from Nexus)
-      baseurl=http://192.168.154.133:8081/repository/local/Extras/
-      enabled=1
-      gpgcheck=0
-      repo_gpgcheck=0
-      module_hotfixes=1
-      
-      [epel-cisco-openh264]
-      name=epel-cisco-openh264 (from Nexus)
-      baseurl=http://192.168.154.133:8081/repository/local/Epel-Cisco-Openh264/
-      enabled=1
-      gpgcheck=0
-      repo_gpgcheck=0
-      module_hotfixes=1
-
+     ```bash
+     ## Trust the CA on each Rocky client first
+     
+     cat > /etc/hosts << 'EOF'
+     127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+     ::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+     172.40.148.1 repo.shbbl.co
+     EOF
+     
+     chmod 644 /home/admin/repo-ca.crt
+     chown root:root /home/admin/repo-ca.crt
+     cp -f /home/admin/repo-ca.crt /etc/pki/ca-trust/source/anchors/
+     update-ca-trust
+     
+     rm -rf /etc/yum.repos.d/*
+     mkdir /etc/yum.repos.d
+     cat > /etc/yum.repos.d/local.repo <<'EOF'
+     [Appstream]
+     name=Appstream (from repo.shbbl.co)
+     baseurl=https://repo.shbbl.co/repository/Rocky-10.1/AppStream/
+     enabled=1
+     gpgcheck=1
+     module_hotfixes=true
+     repo_gpgcheck=0
+     sslverify=1
+     sslcacert=/etc/pki/ca-trust/source/anchors/repo-ca.crt
+     gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-10
+     username=rocky-10.1
+     password=d54e1cea6f90cbf6962efc102b9545e9
+     
+     [Baseos]
+     name=Baseos (from repo.shbbl.co)
+     baseurl=https://repo.shbbl.co/repository/Rocky-10.1/BaseOS/
+     enabled=1
+     gpgcheck=1
+     module_hotfixes=true
+     repo_gpgcheck=0
+     sslverify=1
+     sslcacert=/etc/pki/ca-trust/source/anchors/repo-ca.crt
+     gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-10
+     username=rocky-10.1
+     password=d54e1cea6f90cbf6962efc102b9545e9
+     
+     [Epel]
+     name=Epel (from repo.shbbl.co)
+     baseurl=https://repo.shbbl.co/repository/Rocky-10.1/EPEL/
+     enabled=1
+     gpgcheck=1
+     module_hotfixes=true
+     repo_gpgcheck=0
+     sslverify=1
+     sslcacert=/etc/pki/ca-trust/source/anchors/repo-ca.crt
+     gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-10
+     username=rocky-10.1
+     password=d54e1cea6f90cbf6962efc102b9545e9
+     
+     [Extras]
+     name=Extras (from repo.shbbl.co)
+     baseurl=https://repo.shbbl.co/repository/Rocky-10.1/Extras/
+     enabled=1
+     gpgcheck=1
+     module_hotfixes=true
+     repo_gpgcheck=0
+     sslverify=1
+     sslcacert=/etc/pki/ca-trust/source/anchors/repo-ca.crt
+     gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-10
+     username=rocky-10.1
+     password=d54e1cea6f90cbf6962efc102b9545e9
+     
+     [CodeReady-Builder]
+     name=CodeReady-Builder (from repo.shbbl.co)
+     baseurl=https://repo.shbbl.co/repository/Rocky-10.1/CodeReady-Builder/
+     enabled=1
+     gpgcheck=1
+     module_hotfixes=true
+     repo_gpgcheck=0
+     sslverify=1
+     sslcacert=/etc/pki/ca-trust/source/anchors/repo-ca.crt
+     gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-10
+     username=rocky-10.1
+     password=d54e1cea6f90cbf6962efc102b9545e9
+     
+     [HighAvailability]
+     name=HighAvailability (from repo.shbbl.co)
+     baseurl=https://repo.shbbl.co/repository/Rocky-10.1/HighAvailability/
+     enabled=1
+     gpgcheck=1
+     module_hotfixes=true
+     repo_gpgcheck=0
+     sslverify=1
+     sslcacert=/etc/pki/ca-trust/source/anchors/repo-ca.crt
+     gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-10
+     username=rocky-10.1
+     password=d54e1cea6f90cbf6962efc102b9545e9
+     
+     [Network-Functions-Virtualization]
+     name=Network-Functions-Virtualization (from repo.shbbl.co)
+     baseurl=https://repo.shbbl.co/repository/Rocky-10.1/Network-Functions-Virtualization/
+     enabled=1
+     gpgcheck=1
+     module_hotfixes=true
+     repo_gpgcheck=0
+     sslverify=1
+     sslcacert=/etc/pki/ca-trust/source/anchors/repo-ca.crt
+     gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-10
+     username=rocky-10.1
+     password=d54e1cea6f90cbf6962efc102b9545e9
+     
+     [Real-Time]
+     name=Real-Time (from repo.shbbl.co)
+     baseurl=https://repo.shbbl.co/repository/Rocky-10.1/Real-Time/
+     enabled=1
+     gpgcheck=1
+     module_hotfixes=true
+     repo_gpgcheck=0
+     sslverify=1
+     sslcacert=/etc/pki/ca-trust/source/anchors/repo-ca.crt
+     gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-10
+     username=rocky-10.1
+     password=d54e1cea6f90cbf6962efc102b9545e9
+     
+     [SAP-Application-Support-Packages]
+     name=SAP-Application-Support-Packages (from repo.shbbl.co)
+     baseurl=https://repo.shbbl.co/repository/Rocky-10.1/SAP/
+     enabled=1
+     gpgcheck=1
+     module_hotfixes=true
+     repo_gpgcheck=0
+     sslverify=1
+     sslcacert=/etc/pki/ca-trust/source/anchors/repo-ca.crt
+     gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-10
+     username=rocky-10.1
+     password=d54e1cea6f90cbf6962efc102b9545e9
+     
+     [SAP-HANA-Support-Packages]
+     name=SAP-HANA-Support-Packages (from repo.shbbl.co)
+     baseurl=https://repo.shbbl.co/repository/Rocky-10.1/SAP-HANA/
+     enabled=1
+     gpgcheck=1
+     module_hotfixes=true
+     repo_gpgcheck=0
+     sslverify=1
+     sslcacert=/etc/pki/ca-trust/source/anchors/repo-ca.crt
+     gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-10
+     username=rocky-10.1
+     password=d54e1cea6f90cbf6962efc102b9545e9
+     
+     [Docker-CE]
+     name=Docker-CE (from repo.shbbl.co)
+     baseurl=https://repo.shbbl.co/repository/Rocky-10.1/Docker-CE-Latest
+     enabled=1
+     gpgcheck=0
+     module_hotfixes=true
+     repo_gpgcheck=0
+     sslverify=1
+     sslcacert=/etc/pki/ca-trust/source/anchors/repo-ca.crt
+     gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-10
+     username=rocky-10.1
+     password=d54e1cea6f90cbf6962efc102b9545e9
+     
+     [Gitlab-CE]
+     name=Gitlab-CE (from repo.shbbl.co)
+     baseurl=https://repo.shbbl.co/repository/Rocky-10.1/Gitlab-CE/
+     enabled=1
+     gpgcheck=0
+     module_hotfixes=true
+     repo_gpgcheck=0
+     sslverify=1
+     sslcacert=/etc/pki/ca-trust/source/anchors/repo-ca.crt
+     gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-10
+     username=rocky-10.1
+     password=d54e1cea6f90cbf6962efc102b9545e9
+     
+     [Zabbix]
+     name=Zabbix (from repo.shbbl.co)
+     baseurl=https://repo.shbbl.co/repository/Rocky-10.1/Zabbix/
+     enabled=1
+     gpgcheck=0
+     module_hotfixes=true
+     repo_gpgcheck=0
+     sslverify=1
+     sslcacert=/etc/pki/ca-trust/source/anchors/repo-ca.crt
+     gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-10
+     username=rocky-10.1
+     password=d54e1cea6f90cbf6962efc102b9545e9
+     EOF
      ```
    - Refresh + update on your **all offline hosts**:
      ```bash
