@@ -323,15 +323,22 @@ Kubespray nodes must use the internal Nexus repository server for RPM packages a
 
 After Nexus is installed, create the required hosted repositories before starting the Kubespray deployment.
 
-|    Repository Name   |   Repository Blobstore   |   Format (Type)  | Repodata Depth | Deployment Policy |  Nexus Connector  |  Internal Nexus Connector via Nginx TLS  |                               Purpose                               |
-|----------------------|--------------------------|------------------|----------------|-------------------|-------------------|------------------------------------------|---------------------------------------------------------------------|
-|      Rocky-10.1      |        Rocky-10.1        |   yum (hosted)   |        1       |  Allow Redeploy   |        N/A        |   :443 --> Nexus Backend 127.0.0.1:8081  |               Rocky OS packages for Kubernetes nodes                |
-|          raw         |            raw           |   raw (hosted)   |        1       |  Allow Redeploy   |        N/A        |   :443 --> Nexus Backend 127.0.0.1:8081  | Offline files, scripts, binaries, certificates, and extra artifacts |
-|      docker.io       |        docker.io         | docker (hosted)  |       N/A      |  Allow Redeploy   |    HTTP (15000)   |  :5000 --> Nexus Backend 127.0.0.1:15000 |           Mirrored images originally pulled from docker.io          |
-|   registry.k8s.io    |     registry.k8s.io      | docker (hosted)  |       N/A      |  Allow Redeploy   |    HTTP (15001)   |  :5001 --> Nexus Backend 127.0.0.1:15001 |        Mirrored images originally pulled from registry.k8s.io       |
-|       quay.io        |         quay.io          | docker (hosted)  |       N/A      |  Allow Redeploy   |    HTTP (15002)   |  :5002 --> Nexus Backend 127.0.0.1:15002 |            Mirrored images originally pulled from quay.io           |
-|       ghcr.io        |         ghcr.io          | docker (hosted)  |       N/A      |  Allow Redeploy   |    HTTP (15003)   |  :5003 --> Nexus Backend 127.0.0.1:15003 |            Mirrored images originally pulled from ghcr.io           |
+|    Repository Name   |   Repository Blobstore   |   Format (Type)  | Repodata Depth | Deployment Policy |  Nexus Connector  |    Internal Nexus Connector via Nginx TLS    |                               Purpose                               |
+|----------------------|--------------------------|------------------|----------------|-------------------|-------------------|----------------------------------------------|---------------------------------------------------------------------|
+|     `Rocky-10.1`     |       `Rocky-10.1`       |   yum (hosted)   |        1       |  Allow Redeploy   |        N/A        |   `:443` --> Nexus Backend `127.0.0.1:8081`  |               Rocky OS packages for Kubernetes nodes                |
+|         `raw`        |           `raw`          |   raw (hosted)   |        1       |  Allow Redeploy   |        N/A        |   `:443` --> Nexus Backend `127.0.0.1:8081`  | Offline files, scripts, binaries, certificates, and extra artifacts |
+|     `docker.io`      |       `docker.io`        | docker (hosted)  |       N/A      |  Allow Redeploy   |    HTTP `15000`   |  `:5000` --> Nexus Backend `127.0.0.1:15000` |          Mirrored images originally pulled from `docker.io`         |
+|   `registry.k8s.io`  |    `registry.k8s.io`     | docker (hosted)  |       N/A      |  Allow Redeploy   |    HTTP `15001`   |  `:5001` --> Nexus Backend `127.0.0.1:15001` |       Mirrored images originally pulled from `registry.k8s.io`      |
+|       `quay.io`      |        `quay.io`         | docker (hosted)  |       N/A      |  Allow Redeploy   |    HTTP `15002`   |  `:5002` --> Nexus Backend `127.0.0.1:15002` |           Mirrored images originally pulled from `quay.io`          |
+|       `ghcr.io`      |        `ghcr.io`         | docker (hosted)  |       N/A      |  Allow Redeploy   |    HTTP `15003`   |  `:5003` --> Nexus Backend `127.0.0.1:15003` |           Mirrored images originally pulled from `ghcr.io`          |
 
+#### Important notes
+
+- Do not expose internal Nexus connector ports such as `8081`, `15000`, `15001`, `15002`, or `15003` directly to clients.
+- Nginx should terminate TLS and proxy traffic to the internal Nexus HTTP connectors.
+- For multiple Docker hosted repositories on the same external HTTPS port, use separate FQDNs and Nginx virtual hosts.
+- For a simpler design, expose each Docker hosted repository on a separate external port instead, for example `5000`, `5001`, `5002`, and `5003`.
+- Disable anonymous access and use dedicated read-only or writer service accounts for package and image consumption.
 
 1) **Push RPMs**  
    - Copy `mnt.tar.gz` to Nexus and extract:
