@@ -6,8 +6,8 @@
 # registry_host: "myprivateregisry.com"
 files_repo_host: "nexus.soltani.co"
 files_repo_path: "/repository/raw"
-files_repo_user: "raw"
-files_repo_pass: "V0WECc1tPh2VSjnfKJOLfjrnmKmfKpk"
+files_repo_user: "raw_repository_username"
+files_repo_pass: "raw_repository_password"
 
 files_repo: "https://{{ files_repo_user | urlencode }}:{{ files_repo_pass | urlencode }}@{{ files_repo_host }}{{ files_repo_path }}"
 #files_repo: "https://repo.shbbl.co/repository/raw"
