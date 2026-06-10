@@ -1,173 +1,236 @@
-# Air-gapped, Offline & Hardened Kubernetes Cluster with Kubespray
+# Air-Gapped, Offline and Hardened Kubernetes with Kubespray
 
-This repository contains a detailed, practical runbook for building a
-**production-style, air-gapped, offline, hardened Kubernetes cluster** using
-[Kubespray](https://github.com/kubernetes-sigs/kubespray).
+> A practical, end-to-end runbook for building a production-style Kubernetes cluster in a restricted or fully air-gapped environment using Kubespray, Rocky Linux, Nexus Repository Manager, containerd and Cilium.
 
-🌐 **Project landing page (GitHub Pages)**  
-👉 https://a-soltani255.github.io/Kubespray/
+This repository is a documentation and runbook project. It is not the upstream Kubespray project. The goal is to show how a real Kubernetes platform can be prepared, deployed, hardened and validated when direct Internet access is not available.
 
-📄 **Main document (start here)**  
-👉 [Installing Air-gapped Hardened Kubernetes Cluster Using Kubespray](./Installing-Airgapped-Hardened-Kubernetes-Cluster-Using-Kubespray.md)
+## Start here
 
----
+| Resource | Link |
+|---|---|
+| Live documentation site | <https://a-soltani255.github.io/Kubespray/> |
+| Main build guide | [Installing Air-Gapped Hardened Kubernetes Cluster Using Kubespray](./Installing-Airgapped-Hardened-Kubernetes-Cluster-Using-Kubespray.md) |
+| Supporting material | [Scripts, appendices and Configurations](./Scripts,%20appendices%20and%20Configurations/) |
+| Advanced runbooks | [GitHub Issues](https://github.com/A-Soltani255/Kubespray/issues) |
 
-## What this project is
+## What this project covers
 
-This is a **real-world scenario**, written as a step-by-step document – not just a
-minimal quick-start.
+This project documents a repeatable path for deploying Kubernetes with Kubespray in an offline environment. It focuses on the parts that usually break in real deployments:
 
-The runbook shows how to:
+- Preparing all required artifacts on an Internet-connected machine.
+- Mirroring RPM repositories, Python wheels, Kubernetes binaries and container images.
+- Seeding Nexus Repository Manager inside the offline network.
+- Configuring containerd to pull images from internal registries only.
+- Preparing Kubespray inventory and `group_vars` for a multi-node cluster.
+- Separating management-plane and data-plane traffic.
+- Using Cilium as the CNI.
+- Applying baseline hardening and controlled image pull behavior.
+- Validating the final cluster with concrete post-install checks.
+- Capturing troubleshooting notes and day-2 operational procedures.
 
-- Install and prepare Linux nodes for a multi-node Kubernetes cluster
-- Design and deploy a **highly available control plane**
-- Work in an **air-gapped / offline / restricted network**
-- Build and use:
-  - Local OS package repositories
-  - A private container registry
-- Deploy Kubernetes with **Kubespray** and a custom CNI
-- Apply opinionated **hardening** and perform post-install **health checks**
+Treat this repository as a runbook: another engineer should be able to read it, adapt the values, and reproduce the same type of cluster without searching across many separate notes.
 
-Treat it as a **runbook**: something another engineer can follow end-to-end.
+## Reference architecture
 
----
+The current documentation is based on this reference scenario:
 
-## Supporting material
+| Area | Value |
+|---|---|
+| Operating system | Rocky Linux 10 |
+| Kubernetes deployment tool | Kubespray |
+| Kubernetes runtime | containerd |
+| CNI | Cilium |
+| Offline artifact hub | Sonatype Nexus Repository Manager |
+| OS package mirror | Nexus YUM hosted repository |
+| Container image mirrors | Nexus Docker hosted repositories |
+| Control-plane access | HAProxy VIP on `192.168.10.100:6443` |
+| Network model | Separate management and Kubernetes data networks |
 
-Alongside the main runbook, this repo includes extra material in:
+Example node layout from the runbook:
 
-- `Scripts, appendices and Configurations/`  
-  ([open folder](./Scripts,%20appendices%20and%20Configurations/))
+| Role | Hostname | Data IP | Management IP |
+|---|---|---:|---:|
+| Control plane | `master1.soltani.co` | `192.168.10.1` | `172.40.10.1` |
+| Control plane | `master2.soltani.co` | `192.168.10.2` | `172.40.10.2` |
+| Control plane | `master3.soltani.co` | `192.168.10.3` | `172.40.10.3` |
+| Worker | `worker1.soltani.co` | `192.168.10.4` | `172.40.10.4` |
+| Worker | `worker2.soltani.co` | `192.168.10.5` | `172.40.10.5` |
+| Kubespray / automation host | `kubespray.soltani.co` | `192.168.10.10` | `172.40.10.10` |
+| Nexus | `nexus.soltani.co` | `192.168.10.20` | `172.40.10.20` |
+| API load balancer | `apiserver.soltani.co` | `192.168.10.100` | `172.40.10.100` |
 
-That folder currently contains:
-
-- **Example inventories and group vars**  
-  To show how a Kubespray-based HA cluster can be modelled for this scenario.
-
-- **Helper scripts and one-liners**  
-  Commands you can reuse or adapt while following the guide (for setup, validation, etc.).
-
-- **Diagrams and troubleshooting appendices**  
-  Visuals and notes that explain the architecture and help debug common issues.
-
----
-
-## Skills demonstrated
-
-This repo is meant to showcase concrete DevOps / SRE skills around Kubernetes platform engineering:
-
-- **Cluster provisioning**
-  - Using Kubespray (e.g. v2.28.0) to deploy a multi-node, HA Kubernetes cluster
-  - Customising inventory and group variables for your own topology
-
-- **Air-gapped & offline operations**
-  - Mirroring OS repositories and container images
-  - Using internal registries instead of direct Internet access
-  - Handling “bastion” / transfer hosts for moving artifacts into restricted environments
-
-- **Security & hardening**
-  - Baseline hardening for the OS and Kubernetes components
-  - Reducing exposure in restricted environments
-  - Safely changing core behaviour such as image pull policies and admission plugins
-
-- **Operations & reliability**
-  - Verifying cluster health after install
-  - Thinking in terms of repeatable procedures and scripts, not one-off commands
-
-- **Automation & CI/CD (GitLab)**
-  - Wiring a Kubespray-based cluster into GitLab CI/CD
-  - Re-applying Kubespray via pipelines using Ansible tags for specific components (CNI, apps, etc.) :contentReference[oaicite:1]{index=1}  
-
----
-
-## Deep-dive issues & advanced runbooks
-
-Some of the more advanced procedures are written up as GitHub issues. These act as
-extended runbooks for specific scenarios.
-
-- **[Issue #2 – Removing AlwaysPullImages + Enforcing IfNotPresent](https://github.com/A-Soltani255/Kubespray/issues/2)**  
-  Step-by-step runbook for going from “`AlwaysPullImages` is enabled” to
-  “`AlwaysPullImages` fully removed and `IfNotPresent` under control”, including:
-
-  - Cleaning Kubespray hardening/vars (`kube_apiserver_enable_admission_plugins`, `k8s_image_pull_policy: IfNotPresent`)  
-  - Re-applying `cluster.yml` so kubeadm config is regenerated  
-  - Updating kubeadm config + `kube-apiserver` manifests on each control-plane node  
-  - Verifying that the admission plugin set and pull policy are correct across the cluster :contentReference[oaicite:2]{index=2}  
-
-- **[Issue #3 – GitLab CI/CD for Kubespray-Based Kubernetes Cluster](https://github.com/A-Soltani255/Kubespray/issues/3)**  
-  Full design and implementation guide for integrating this Kubespray project with
-  GitLab CI/CD, including:
-
-  - Keeping Kubespray + inventory in a GitLab project (e.g. `devops/kubespray`)  
-  - Installing a GitLab Runner (binary, shell executor) on the Ansible host  
-  - Defining jobs such as `kubespray-full`, `kubespray-cilium`, `kubespray-custom-cni`, etc.  
-  - Having each job call `ci/run-kubespray.sh`, which runs  
-    `ansible-playbook -i inventory/mycluster/inventory.ini cluster.yml [--tags ...]`  
-  - Using SSH keys from the `gitlab-runner` user to reach all cluster nodes safely.
-
-As the project evolves, additional improvements and day-2 operations may be tracked in
-the [Issues tab](https://github.com/A-Soltani255/Kubespray/issues).
-
----
-
-## How to use this repository
-
-1. Open the main guide:  
-   👉 [Installing Air-gapped Hardened Kubernetes Cluster Using Kubespray](./Installing-Airgapped-Hardened-Kubernetes-Cluster-Using-Kubespray.md)
-
-2. Review and adapt the **assumptions/prerequisites**:
-   - OS version
-   - Node IPs and hostnames
-   - Network/firewall rules
-   - Storage layout
-
-3. Follow the steps in order on a **lab or test environment** first.
-
-4. Use the **Scripts, appendices and Configurations** folder for:
-   - Ready-made inventories and group vars to speed up setup
-   - Handy scripts while running the procedure
-   - Diagrams and appendices when explaining or troubleshooting
-
-5. Once you’re comfortable with the flow, adapt:
-   - Inventory files
-   - Group vars
-   - Registry / repository endpoints  
-   to match your organisation’s standards and security policies.
-
-6. For advanced scenarios:
-   - Use **Issue #2** if you need to change image pull policy / remove `AlwaysPullImages` safely  
-   - Use **Issue #3** if you want to drive Kubespray re-applies via GitLab CI/CD pipelines
-
----
-
-## Using this in a portfolio / LinkedIn context
-
-This repository is intentionally documentation-heavy and scenario-based so that reviewers can see:
-
-- How you **structure and document** a complex technical procedure
-- That you understand:
-  - Air-gapped / offline constraints
-  - HA Kubernetes cluster design with Kubespray
-  - Registry and repo mirroring
-  - Baseline hardening and operational practices
-  - CI/CD integration for day-2 cluster changes (via GitLab)
-
-You can link directly to this repo — and to the live GitHub Pages site — from LinkedIn or your CV
-to demonstrate **hands-on Kubernetes platform engineering**, not just theory.
-
----
+> Replace all IP addresses, hostnames, ports, credentials and repository names before using this in another environment.
 
 ## Repository structure
 
-- `Installing-Airgapped-Hardened-Kubernetes-Cluster-Using-Kubespray.md`  
-  End-to-end runbook for building the air-gapped, offline, hardened Kubernetes cluster with Kubespray.
+```text
+.
+├── README.md
+├── Installing-Airgapped-Hardened-Kubernetes-Cluster-Using-Kubespray.md
+├── index.html
+├── robots.txt
+├── sitemap.xml
+└── Scripts, appendices and Configurations/
+    ├── Configurations/
+    │   ├── containerd-yml.md
+    │   ├── examples of offline lists.md
+    │   ├── hardening-yaml.md
+    │   ├── k8s-cluster-yml.md
+    │   ├── k8s-net-custom-cni-yml.md
+    │   └── offline-yml.md
+    ├── Firewalld  Preparation/
+    │   └── Firewalld Configuration.md
+    ├── Nexus Preparation/
+    │   └── Nexus Repository Manager for Air-Gapped Kubespray Deployments.md
+    └── Scripts/
+        ├── files-push-repo.sh
+        ├── files.sh
+        ├── images-load-and-retag.sh
+        ├── images-verify.sh
+        └── images.sh
+```
 
-- `Scripts, appendices and Configurations/`  
-  Supporting material:
-  - Example inventories and group vars  
-  - Helper scripts and one-liners  
-  - Diagrams and troubleshooting appendices
+## Documentation map
 
----
+| Document | Purpose |
+|---|---|
+| [Main Kubespray build guide](./Installing-Airgapped-Hardened-Kubernetes-Cluster-Using-Kubespray.md) | Complete installation procedure from artifact preparation to final verification. |
+| [Nexus preparation](./Scripts,%20appendices%20and%20Configurations/Nexus%20Preparation/Nexus%20Repository%20Manager%20for%20Air-Gapped%20Kubespray%20Deployments.md) | Build Nexus repositories for RPM packages, raw files and Docker images. |
+| [Firewalld configuration](./Scripts,%20appendices%20and%20Configurations/Firewalld%20%20Preparation/Firewalld%20Configuration.md) | Kubernetes firewall zones, services, ipsets, rich rules, Cilium traffic and rollback notes. |
+| [containerd variables](./Scripts,%20appendices%20and%20Configurations/Configurations/containerd-yml.md) | containerd mirror and runtime-related Kubespray configuration. |
+| [offline variables](./Scripts,%20appendices%20and%20Configurations/Configurations/offline-yml.md) | Offline download URLs, artifact paths and repository endpoints. |
+| [cluster variables](./Scripts,%20appendices%20and%20Configurations/Configurations/k8s-cluster-yml.md) | Core Kubernetes cluster settings. |
+| [hardening variables](./Scripts,%20appendices%20and%20Configurations/Configurations/hardening-yaml.md) | Kubernetes hardening configuration and admission plugin controls. |
+| [custom CNI variables](./Scripts,%20appendices%20and%20Configurations/Configurations/k8s-net-custom-cni-yml.md) | Custom CNI values and Helm chart repository settings. |
+| [offline list examples](./Scripts,%20appendices%20and%20Configurations/Configurations/examples%20of%20offline%20lists.md) | Example `files.list` and `images.list` style references. |
 
-Feedback and suggestions are welcome via issues or pull requests.
+## Helper scripts
+
+| Script | Purpose |
+|---|---|
+| [`files.sh`](./Scripts,%20appendices%20and%20Configurations/Scripts/files.sh) | Download offline binary artifacts from Kubespray-generated file lists. |
+| [`files-push-repo.sh`](./Scripts,%20appendices%20and%20Configurations/Scripts/files-push-repo.sh) | Push or stage downloaded files into the internal repository layout. |
+| [`images.sh`](./Scripts,%20appendices%20and%20Configurations/Scripts/images.sh) | Pull and save container images on the Internet-connected preparation host. |
+| [`images-load-and-retag.sh`](./Scripts,%20appendices%20and%20Configurations/Scripts/images-load-and-retag.sh) | Load saved images, retag them for internal Nexus repositories and prepare them for push. |
+| [`images-verify.sh`](./Scripts,%20appendices%20and%20Configurations/Scripts/images-verify.sh) | Verify that required images exist and identify missing images before deployment. |
+
+Review scripts before running them. They are examples for this lab scenario and may need changes for your registry URLs, credentials, repository names and version pins.
+
+## Deployment flow
+
+The high-level process is:
+
+1. **Prepare online artifacts once**
+   - Sync RPM repositories.
+   - Download Kubespray.
+   - Download Python wheels.
+   - Generate Kubespray offline lists.
+   - Pull and save all required container images.
+   - Download Kubernetes, containerd, CNI and supporting binaries.
+
+2. **Move artifacts into the offline network**
+   - Transfer RPM archives, image archives, wheels and binaries.
+   - Validate checksums where available.
+   - Keep a versioned copy of the artifact set for future rebuilds.
+
+3. **Seed Nexus**
+   - Create YUM, raw and Docker hosted repositories.
+   - Upload RPM metadata and packages.
+   - Push retagged container images into their matching internal repositories.
+   - Expose repository access through controlled internal endpoints.
+
+4. **Prepare all nodes**
+   - Configure hostnames, DNS or `/etc/hosts`.
+   - Configure NTP or Chrony.
+   - Disable swap.
+   - Confirm SSH access from the Kubespray host.
+   - Apply firewall rules or confirm external firewall enforcement.
+
+5. **Configure Kubespray**
+   - Set inventory hosts and groups.
+   - Configure `offline.yml`, `containerd.yml`, `k8s-cluster.yml`, CNI values and hardening values.
+   - Confirm that every URL points to internal repositories only.
+
+6. **Deploy the cluster**
+   - Run Kubespray from the automation host.
+   - Watch for image pull, certificate, API, CNI and kubelet errors.
+   - Fix configuration issues in inventory or group variables, then re-run safely.
+
+7. **Verify and document the final state**
+   - Confirm node readiness.
+   - Confirm control-plane health.
+   - Confirm Cilium and CoreDNS status.
+   - Confirm all image pulls resolve through Nexus.
+   - Capture final versions, configs and verification output.
+
+## Basic usage
+
+Clone the repository:
+
+```bash
+git clone https://github.com/A-Soltani255/Kubespray.git
+cd Kubespray
+```
+
+Open the main runbook:
+
+```bash
+less Installing-Airgapped-Hardened-Kubernetes-Cluster-Using-Kubespray.md
+```
+
+Or browse the live documentation site:
+
+```text
+https://a-soltani255.github.io/Kubespray/
+```
+
+## Advanced runbooks
+
+Some longer operational procedures are tracked as GitHub issues:
+
+| Issue | Topic |
+|---|---|
+| [Issue #2](https://github.com/A-Soltani255/Kubespray/issues/2) | Removing `AlwaysPullImages` and enforcing `IfNotPresent` safely. |
+| [Issue #3](https://github.com/A-Soltani255/Kubespray/issues/3) | Running Kubespray through GitLab CI/CD for controlled day-2 changes. |
+
+## Safety notes
+
+- Air-gapped does not automatically mean secure. You still need checksum validation, controlled artifact promotion, internal TLS, access control and auditability.
+- Do not expose internal Nexus backend ports directly to clients. Use controlled frontend endpoints and restrict access by network policy or firewall.
+- Do not commit real passwords, tokens, private keys, certificates or internal-only secrets.
+- Do not blindly reuse the example IP addresses or DNS names in production.
+- Test the full flow in a lab before using it for a real environment.
+- Keep the exact artifact versions used for every deployment. Offline rebuilds are only reliable when the input artifact set is preserved.
+
+## Skills demonstrated
+
+This project demonstrates practical DevOps, SRE and platform engineering work:
+
+- Kubernetes cluster provisioning with Kubespray and Ansible.
+- Air-gapped artifact preparation and repository mirroring.
+- Nexus repository design for RPM packages, raw files and container images.
+- containerd registry mirror configuration.
+- Cilium-based Kubernetes networking.
+- HA control-plane design with a load-balanced API endpoint.
+- Firewall zoning and controlled traffic flows.
+- Kubernetes hardening and admission plugin management.
+- Repeatable runbook writing, validation and troubleshooting.
+- CI/CD-driven day-2 operations using GitLab.
+
+## Portfolio note
+
+This repository is intentionally documentation-heavy. It is suitable for showing hands-on Kubernetes platform engineering work because it includes architecture, implementation details, operational trade-offs, troubleshooting notes, scripts and validation steps.
+
+For a CV or LinkedIn profile, describe it as:
+
+> Built and documented an air-gapped, hardened Kubernetes deployment workflow using Kubespray, Nexus, containerd and Cilium, including offline artifact mirroring, cluster inventory design, firewall rules, hardening controls, verification checks and CI/CD-based day-2 operations.
+
+## Feedback
+
+Issues and pull requests are welcome. When suggesting changes, include:
+
+- The affected document or script.
+- The environment where the issue was seen.
+- The exact command or configuration that failed.
+- The expected result.
+- The actual result and error output.
