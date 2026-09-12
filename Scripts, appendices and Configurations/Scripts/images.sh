@@ -4,7 +4,7 @@ set -Eeuo pipefail
 NEXUS_REPO="192.168.10.1:4000/kubespray"   # registry/repo prefix
 # Please note that this registry (192.168.10.1:4000/kubespray) is just a sample. Depending on the registry this image belongs to, it must be changed in the offline environment and then pushed to its own specially created registry.
 CURRENT_DIR="/opt"
-IMAGES_LIST="${CURRENT_DIR}/kubespray/contrib/offline/tmp/images.list"
+IMAGES_LIST="${CURRENT_DIR}/kubespray/contrib/offline/temp/images.list"
 IMAGES_DIR="${CURRENT_DIR}/container-images"
 IMAGES_ARCHIVE="${CURRENT_DIR}/container-images.tar.gz"
 
