@@ -4,7 +4,7 @@ CURRENT_DIR=$( dirname "$(readlink -f "$0")" )
 OFFLINE_FILES_DIR_NAME="offline-files"
 OFFLINE_FILES_DIR="${CURRENT_DIR}/${OFFLINE_FILES_DIR_NAME}"
 OFFLINE_FILES_ARCHIVE="${CURRENT_DIR}/offline-files.tar.gz"
-FILES_LIST=${FILES_LIST:-"${CURRENT_DIR}/kubespray/contrib/offline/tmp/files.list"}
+FILES_LIST=${FILES_LIST:-"${CURRENT_DIR}/kubespray/contrib/offline/temp/files.list"}
 
 # Ensure the files list exists
 if [ ! -f "${FILES_LIST}" ]; then
